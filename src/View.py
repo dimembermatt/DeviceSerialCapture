@@ -32,9 +32,9 @@ class View:
     GREEN = QColor(0, 255, 0, 255)
 
     # Timing constants.
-    _SECOND = 1000  # in milliseconds.
+    SECOND = 1000  # in milliseconds.
 
-    def __init__(self, data_controller=None, framerate=60):
+    def __init__(self, data_controller=None, framerate=30):
         """
         Initializes a view object for displaying data.
 
@@ -52,6 +52,7 @@ class View:
         # The datastoreParent is a reference to the overarching DataController,
         # which exposes its API to user Views.
         self._data_controller = data_controller
+        self._serial_datastream = data_controller["serial_datastream"]
 
     def get_layout(self):
         """

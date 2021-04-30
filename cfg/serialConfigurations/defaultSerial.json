@@ -1,6 +1,5 @@
 {
-    "name": "Default Serial Configuration.",
-    "port_name": "COM3",
+    "name": "Default Serial Configuration for a default arduino device running at 115200 baud.",
     "baud_rate": 115200,
     "data_bits": "EIGHT",
     "endian": "LSB",

@@ -25,7 +25,6 @@ import serial.tools.list_ports
 
 # Custom Imports.
 from src.View import View
-from src.Console import Console
 
 
 class SetupView(View):
@@ -71,7 +70,32 @@ class SetupView(View):
         )
 
         # Setup connect button.
-        self._widget_pointers["bu_connect"].clicked.connect(self.validate)
+        self._widget_pointers["bu_connect"].clicked.connect(self._connect_disconnect)
+        self._widget_pointers["lbl_status"].setStyleSheet(
+            "QLabel { background-color: rgba(122, 122, 122, 255); }"
+        )
+
+        self._setup_timer = QTimer()
+        self._setup_timer.timeout.connect(self._update_console)
+        self._setup_timer.start(View.SECOND / self._framerate)
+
+    def _update_console(self):
+        if self._data_controller["status"] == "CONNECTED":
+            self._widget_pointers["lbl_status"].setText(self._data_controller["status"])
+            self._widget_pointers["lbl_status"].setStyleSheet(
+                "QLabel { background-color: rgba(122, 255, 122, 255); }"
+            )
+
+            # Modify connect button to say "DISCONNECT".
+            self._widget_pointers["bu_connect"].setText("DISCONNECT")
+        elif self._data_controller["status"] == "DISCONNECTED":
+            self._widget_pointers["lbl_status"].setText(self._data_controller["status"])
+            self._widget_pointers["lbl_status"].setStyleSheet(
+                "QLabel { background-color: rgba(122, 122, 122, 255); }"
+            )
+
+            # Modify connect button to say "CONNECT".
+            self._widget_pointers["bu_connect"].setText("CONNECT")
 
     def update_ports(self):
         """
@@ -96,24 +120,23 @@ class SetupView(View):
                 with open(file_name[0], "r") as f:
                     data = json.load(f)
 
-                    if type(data["port_name"]) is str:
+                    if "port_name" in data and type(data["port_name"]) is str:
                         self._get_file_name_helper(data, "cb_portname", "port_name")
 
-                    if type(data["baud_rate"]) is int:
+                    if "baud_rate" in data and type(data["baud_rate"]) is int:
                         self._get_file_name_helper(data, "cb_baud", "baud_rate")
 
-                    if type(data["data_bits"]) is str:
+                    if "data_bits" in data and type(data["data_bits"]) is str:
                         self._get_file_name_helper(data, "cb_databits", "data_bits")
 
-                    if type(data["endian"]) is str:
+                    if "endian" in data and type(data["endian"]) is str:
                         self._get_file_name_helper(data, "cb_endian", "endian")
 
-                    if type(data["sync_bits"]) is str:
+                    if "sync_bits" in data and type(data["sync_bits"]) is str:
                         self._get_file_name_helper(data, "cb_syncbits", "sync_bits")
 
-                    if type(data["parity_bits"]) is str:
+                    if "parity_bits" in data and type(data["parity_bits"]) is str:
                         self._get_file_name_helper(data, "cb_paritybits", "parity_bits")
-
                     f.close()
             else:
                 self._raise_error("Invalid file type.")
@@ -129,7 +152,16 @@ class SetupView(View):
             )
         self._widget_pointers[cb_string].setCurrentIndex(index)
 
-    def validate(self):
+    def _connect_disconnect(self):
+        if self._data_controller["status"] == "DISCONNECTED":
+            self.connect()
+        elif self._data_controller["status"] == "CONNECTED":
+            self.disconnect()
+
+    def connect(self):
+        """
+        Validates the existing inputs and attempts to connect to the serial device.
+        """
         port = self._widget_pointers["cb_portname"].currentText()
         baud_rate = self._widget_pointers["cb_baud"].currentText()
         data_bits = self._widget_pointers["cb_databits"].currentText()
@@ -181,40 +213,77 @@ class SetupView(View):
         self._data_controller["config"]["sync_bits"] = str(sync_bits)
         self._data_controller["config"]["parity_bits"] = str(parity_bits)
 
+        # Set status box to "CONNECTING" and set to blue.
         self._widget_pointers["lbl_status"].setText("CONNECTING")
         self._widget_pointers["lbl_status"].setStyleSheet(
             "QLabel { background-color: rgba(122, 122, 255, 255); }"
         )
 
-        self._data_controller["app"]._setup_serial_thread()
+        # Activate a serial connection.
+        self._data_controller["app"]._start_serial_thread()
 
-        # Check for first message by the serialWorker in serial_datastream.
-        serial_datastream = self._data_controller["serial_datastream"]
+        # Check for status == READY by the serialWorker in serial_datastream.
+        # TODO: add timeout error for bad connection.
+
         ready = False
         while not ready:
-            while not serial_datastream["read_lock"].tryLock(50):
+            while not self._serial_datastream["status_lock"].tryLock(
+                View.SECOND / self._framerate
+            ):
                 pass
             if (
-                len(serial_datastream["read"]) != 0
-                and serial_datastream["read"][0:5] == "READY"
+                len(self._serial_datastream["status"]) != 0
+                and self._serial_datastream["status"][0] == "READY"
             ):
-                serial_datastream["read"] = serial_datastream["read"][5:]
+                self._serial_datastream["status"] = self._serial_datastream["status"][
+                    1:
+                ]
                 ready = True
-            serial_datastream["read_lock"].unlock()
+            self._serial_datastream["status_lock"].unlock()
 
-        self._widget_pointers["lbl_status"].setText("CONNECTED")
-        self._widget_pointers["lbl_status"].setStyleSheet(
-            "QLabel { background-color: rgba(122, 255, 122, 255); }"
-        )
+        # Upon success, set status to connected.
+        self._data_controller["status"] = "CONNECTED"
 
-        # TODO: Highlight Monitor tab.
+    def disconnect(self):
+        """
+        Disconnects an existing serial line and updates the UI.
+        """
+        # Stop an existing serial communication.
+        self._data_controller["app"]._stop_serial_thread()
 
-        # TODO: modify connect button to gracefully disconnect. Requires parent
-        # function for managing connect/disconnect.
+        # Upon success, set status to disconnected.
+        self._data_controller["status"] = "DISCONNECTED"
 
     def _raise_error(self, error_str):
+        """
+        Raises an error on the status label.
+
+        Parameters
+        ----------
+        error_str: str
+            Error string to display.
+        """
         self._widget_pointers["lbl_status"].setText(error_str)
         self._widget_pointers["lbl_status"].setStyleSheet(
             "QLabel { background-color: rgba(255, 0, 0, 255); }"
         )
+
         # Set timer to set status back to OK.
+        QTimer.singleShot(15000, self._revert_error)
+
+    def _revert_error(self):
+        """
+        Resets the status bar after an error has been displayed for X amount of
+        time.
+        """
+        self._widget_pointers["lbl_status"].setText(self._data_controller["status"])
+        if self._data_controller["status"] == "DISCONNECTED":
+            self._widget_pointers["lbl_status"].setStyleSheet(
+                "QLabel { background-color: rgba(122, 122, 122, 255); }"
+            )
+        elif self._data_controller["status"] == "CONNECTED":
+            self._widget_pointers["lbl_status"].setStyleSheet(
+                "QLabel { background-color: rgba(122, 255, 122, 255); }"
+            )
+        else:
+            pass
