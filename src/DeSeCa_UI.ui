@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DeSeCa</class>
+ <widget class="QDialog" name="DeSeCa">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color:rgb(0, 6, 93)</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0">
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="styleSheet">
+      <string notr="true">background-color:rgb(0, 36, 81)</string>
+     </property>
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tab">
+      <attribute name="title">
+       <string>Connect</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QFrame" name="frame">
+         <property name="font">
+          <font>
+           <family>Cascadia Code Light</family>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <widget class="QLabel" name="lbl_status">
+          <property name="geometry">
+           <rect>
+            <x>260</x>
+            <y>10</y>
+            <width>251</width>
+            <height>20</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Status</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="bu_connect">
+          <property name="geometry">
+           <rect>
+            <x>330</x>
+            <y>390</y>
+            <width>111</width>
+            <height>23</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+          <property name="text">
+           <string>Connect</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="cb_portname">
+          <property name="geometry">
+           <rect>
+            <x>590</x>
+            <y>130</y>
+            <width>91</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="cb_baud">
+          <property name="geometry">
+           <rect>
+            <x>590</x>
+            <y>170</y>
+            <width>91</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="cb_databits">
+          <property name="geometry">
+           <rect>
+            <x>590</x>
+            <y>210</y>
+            <width>91</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="cb_endian">
+          <property name="geometry">
+           <rect>
+            <x>590</x>
+            <y>250</y>
+            <width>91</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="cb_syncbits">
+          <property name="geometry">
+           <rect>
+            <x>590</x>
+            <y>290</y>
+            <width>91</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+         </widget>
+         <widget class="QComboBox" name="cb_paritybits">
+          <property name="geometry">
+           <rect>
+            <x>590</x>
+            <y>330</y>
+            <width>91</width>
+            <height>22</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+         </widget>
+         <widget class="QLineEdit" name="le_serial_config">
+          <property name="geometry">
+           <rect>
+            <x>90</x>
+            <y>210</y>
+            <width>151</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+          <property name="text">
+           <string>Serial Config Filename</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="bu_serial_config_filesearch">
+          <property name="geometry">
+           <rect>
+            <x>240</x>
+            <y>210</y>
+            <width>31</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+          </property>
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_or">
+          <property name="geometry">
+           <rect>
+            <x>370</x>
+            <y>210</y>
+            <width>31</width>
+            <height>20</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>OR</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_load_config">
+          <property name="geometry">
+           <rect>
+            <x>120</x>
+            <y>90</y>
+            <width>141</width>
+            <height>20</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Load Your Configuration</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_set_manually">
+          <property name="geometry">
+           <rect>
+            <x>550</x>
+            <y>90</y>
+            <width>91</width>
+            <height>20</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Set it Manually</string>
+          </property>
+         </widget>
+         <widget class="Line" name="line">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>30</y>
+            <width>751</width>
+            <height>20</height>
+           </rect>
+          </property>
+          <property name="lineWidth">
+           <number>2</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_portname">
+          <property name="geometry">
+           <rect>
+            <x>510</x>
+            <y>130</y>
+            <width>71</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Port Name</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_baud">
+          <property name="geometry">
+           <rect>
+            <x>510</x>
+            <y>170</y>
+            <width>71</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Baud Rate</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_databits">
+          <property name="geometry">
+           <rect>
+            <x>510</x>
+            <y>210</y>
+            <width>71</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>No. Data Bits</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_endian">
+          <property name="geometry">
+           <rect>
+            <x>510</x>
+            <y>250</y>
+            <width>71</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Endianness</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_syncbits">
+          <property name="geometry">
+           <rect>
+            <x>510</x>
+            <y>290</y>
+            <width>71</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Sync Bits</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="lbl_paritybits">
+          <property name="geometry">
+           <rect>
+            <x>510</x>
+            <y>330</y>
+            <width>71</width>
+            <height>21</height>
+           </rect>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color:rgb(255, 255, 255)</string>
+          </property>
+          <property name="text">
+           <string>Parity Bits</string>
+          </property>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_2">
+      <attribute name="title">
+       <string>Monitor</string>
+      </attribute>
+      <widget class="QFrame" name="frame_2">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>10</y>
+         <width>771</width>
+         <height>441</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <family>Cascadia Code Light</family>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <widget class="QLabel" name="lbl_status2">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>10</y>
+          <width>261</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color:rgb(255, 255, 255);</string>
+        </property>
+        <property name="text">
+         <string>Status</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+       <widget class="Line" name="line_2">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>30</y>
+          <width>761</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Sunken</enum>
+        </property>
+        <property name="lineWidth">
+         <number>2</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="bu_send">
+        <property name="geometry">
+         <rect>
+          <x>330</x>
+          <y>412</y>
+          <width>51</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+        </property>
+        <property name="text">
+         <string>Send</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="le_transmit_txt">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>412</y>
+          <width>321</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+        </property>
+        <property name="placeholderText">
+         <string>Transmit text here...</string>
+        </property>
+       </widget>
+       <widget class="QTextBrowser" name="tb_serial_output">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>50</y>
+          <width>371</width>
+          <height>361</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+        </property>
+       </widget>
+       <widget class="Line" name="line_3">
+        <property name="geometry">
+         <rect>
+          <x>380</x>
+          <y>40</y>
+          <width>20</width>
+          <height>391</height>
+         </rect>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Sunken</enum>
+        </property>
+        <property name="lineWidth">
+         <number>2</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="bu_save">
+        <property name="geometry">
+         <rect>
+          <x>650</x>
+          <y>410</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+        </property>
+        <property name="text">
+         <string>Save</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QPushButton" name="bu_packet_config_filesearch">
+       <property name="geometry">
+        <rect>
+         <x>730</x>
+         <y>60</y>
+         <width>31</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="le_packet_config">
+       <property name="geometry">
+        <rect>
+         <x>580</x>
+         <y>60</y>
+         <width>151</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color:rgb(255, 255, 255);
+background:rgb(114, 133, 183)</string>
+       </property>
+       <property name="text">
+        <string>Packet Config Filename</string>
+       </property>
+      </widget>
+      <widget class="QWidget" name="PlaceholderGraph" native="true">
+       <property name="geometry">
+        <rect>
+         <x>399</x>
+         <y>100</y>
+         <width>361</width>
+         <height>311</height>
+        </rect>
+       </property>
+      </widget>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

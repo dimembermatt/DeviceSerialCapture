@@ -1,0 +1,9 @@
+{
+    "name": "Default Serial Configuration.",
+    "port_name": "COM3",
+    "baud_rate": 115200,
+    "data_bits": "EIGHT",
+    "endian": "LSB",
+    "sync_bits": "ONE",
+    "parity_bits": "None"
+}

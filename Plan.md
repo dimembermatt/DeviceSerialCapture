@@ -78,11 +78,10 @@ tab 2: Capture screen
         - 115200 (default)
 3. Data bits per character, textbox & dropdown menu
     - dropdown populated by list of common data bit values
-        - 5
-        - 6
-        - 7
-        - 8 (default)
-        - 9
+        - FIVE
+        - SIX
+        - SEVEN
+        - EIGHT (default)
 4. Data Endianness, dropdown menu
     - dropdown populated by two options
         - LSB (default)
@@ -133,13 +132,13 @@ tab 2: Capture screen
 Format
 ```c++
 {
-    "name": string,             // OPTIONAL
-    "port_name": string,        // OPTIONAL, default first listed by `..list_ports.comports()`
-    "baud_rate": int,           // OPTIONAL, default 115200
-    "data_bits": int,           // OPTIONAL, default 8
-    "endian": "LSB"/"MSB",      // OPTIONAL, default LSB
-    "sync_bits": int,           // OPTIONAL, default 1
-    "parity_bits": "N"/"O"/"E", // OPTIONAL, default NONE
+    "name": string,                             // OPTIONAL
+    "port_name": string,                        // OPTIONAL, default first listed by `..list_ports.comports()`
+    "baud_rate": int,                           // OPTIONAL, default 115200
+    "data_bits": "FIVE"/"SIX"/"SEVEN"/"EIGHT",  // OPTIONAL, default EIGHT
+    "endian": "LSB"/"MSB",                      // OPTIONAL, default LSB
+    "sync_bits": "ONE"/"TWO",                   // OPTIONAL, default 1
+    "parity_bits": "None"/"Odd"/"Even"          // OPTIONAL, default NONE
 }
 ```
 
@@ -149,10 +148,10 @@ Example
     "name": "RTD Sensor",
     "port_name": "/dev/ttyUSB0",
     "baud_rate": 115200,
-    "data_bits": 8,
+    "data_bits": "EIGHT",
     "endian": "LSB",
-    "sync_bits": 1,
-    "parity_bits": "N",
+    "sync_bits": "ONE",
+    "parity_bits": "None"
 }
 ```
 
