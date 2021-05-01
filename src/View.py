@@ -52,7 +52,6 @@ class View:
         # The datastoreParent is a reference to the overarching DataController,
         # which exposes its API to user Views.
         self._data_controller = data_controller
-        self._serial_datastream = data_controller["serial_datastream"]
 
     def get_layout(self):
         """

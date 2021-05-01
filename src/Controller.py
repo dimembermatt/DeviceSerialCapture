@@ -56,7 +56,7 @@ class Controller:
                 "sync_bits": 1,
                 "parity_bits": "None",
             },
-            "packet_config": {},
+            "packet_config": None,
             "serial_thread": None,
             "serial_datastream": {
                 "read": [],
@@ -124,6 +124,7 @@ class Controller:
         self._widget_pointers["le_transmit_txt"] = self.widget.le_transmit_txt
         self._widget_pointers["le_packet_config"] = self.widget.le_packet_config
         self._widget_pointers["te_serial_output"] = self.widget.te_serial_output
+        self._widget_pointers["graph_layout"] = self.widget.graph_layout
 
         # 3. Initialize the tabs.
         self._data_controller["widget_pointers"] = self._widget_pointers

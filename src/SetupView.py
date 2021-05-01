@@ -48,6 +48,8 @@ class SetupView(View):
             data_controller=data_controller, framerate=framerate
         )
 
+        self._serial_datastream = data_controller["serial_datastream"]
+
         self._widget_pointers = self._data_controller["widget_pointers"]
 
         # Set Status to DISCONNECTED.

@@ -1,0 +1,17 @@
+{
+    "packet_title": "Type 1 Example",
+    "packet_description": "A character stream where packets are split by semicolons; Sources are represented by the specifier 'id', and source data is represented by the specifier 'data'.",
+    "example_line": "id:0x632;data:0x88;id:0x632;data:0x44;",
+    "graph_params": {
+        "title": "Temperature data over time.",
+        "x_axis": "Time (ms)",
+        "y_axis": "Temperature (C)"
+    },
+    "packet_format": {
+        "type": 1,
+        "packet_delimiters": [";"],
+        "packet_ids": ["0x632"],
+        "data_delimiters": [":"],
+        "specifiers": ["id", "data"]
+    }
+}

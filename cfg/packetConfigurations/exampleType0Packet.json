@@ -1,0 +1,17 @@
+{
+    "packet_title": "Type 0 Example",
+    "example_line": "sensor = <VAL>\toutput = <VAL>\nsensor = <VAL>\toutput = <VAL>\n",
+    "packet_description": "A human readable character stream where packets are split by the tab and newline delimiters. The serial output of Arduino's AnalogInOutSerial sketch. Only the mapped output packets are captured.",
+    "graph_params": {
+        "title": "Temperature data over time.",
+        "x_axis": "Time (ms)",
+        "y_axis": "Temperature (C)"
+    },
+    "packet_format": {
+        "type": 0,
+        "packet_delimiters": ["\n", "\t"],
+        "packet_ids": ["output"],
+        "data_delimiters": [" = "],
+        "ignore": []
+    }
+}

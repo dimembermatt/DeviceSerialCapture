@@ -1,0 +1,17 @@
+{
+    "packet_title": "Type 3 Example",
+    "packet_description": "A bytestream where every 12 bits represents a packet. 4 bits are used to represent the source ID, and 8 bits are used to represent the source DATA.",
+    "example_line": "0b0001_1000_1010",
+    "graph_params": {
+        "title": "Temperature data over time.",
+        "x_axis": "Time (ms)",
+        "y_axis": "Temperature (C)"
+    },
+    "packet_format": {
+        "type": 3,
+        "header_order": ["ID", "DATA"],
+        "header_len": [4, 8],
+        "packet_ids": ["0b0001"]
+    }
+}
+

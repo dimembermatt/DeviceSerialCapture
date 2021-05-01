@@ -1,9 +1,18 @@
 # Device Serial Capture (DeSeCa)
 
-DeSeCa is a customizable application template for capturing formatted serial
-packets from different devices and visualizing it. Users can load specific
-serial configurations and packet configurations and monitor traffic from their
+DeSeCa is a customizable application for capturing formatted serial packets
+from different devices and visualizing it. Users can load specific serial
+configurations and packet configurations and monitor traffic from their
 laptop over USB.
+
+This was created from 04/29/21 to 05/01/21 to use in my personal applications,
+namely:
+- [IV Curve Tracer](https://github.com/lhr-solar/Array-CurveTracerPCB) packet
+  capture
+- [RASWare](https://github.com/ut-ras/Rasware) student distance sensor
+  visualization
+- Senior Design LoRa Network testing
+- And a couple others I can't divulge
 
 ## Resources
 
@@ -19,137 +28,21 @@ laptop over USB.
       complicated for the first time beginner. I recommend more experienced
       students or users to play with this.
 
-## Known target applications
-- Spectroscopy capture
-- IV Curve Tracer capture
-- Robotathon Distance sensor capture
-- Senior Design LoRa Network testing capture
-- Other solar car capture boards (CAN Sniffer, telemetry)
-
 ## Optional features
 - color code option for packets
 
 ## Current known bugs
-- ???
+- Freeze up on packet selection
 
-## Design
+---
+## Device Configuration File Formats
 
-Serial interfacing in pyserial, UI is in PyQt5.
+The device configuration file format is an optional file that can load your
+preset settings for your device on the fly. You can just as easily use the
+dropdown menus to set your device, but this might be handy if you have a bunch
+of devices with different configurations and can't remember them all.
 
-```
-tab 1: Configuration screen
--------------------------------
-| A | B |                     | <- tabs
-|-----------------------------|
-| - - - - - - -8- - - - - - - | <- status
-|-----------------------------|
-|                     |   1   |
-|                     |   2   |
-| Load Config  OR     |   3   | <- options
-|      0              |   4   |
-|                     |   5   |
-|              7      |   6   |
--------------------------------
-
-tab 2: Capture screen
--------------------------------
-| A | B |                     | <- tabs
-|-----------------------------|
-| - - - - - - -9- - - - - - - | <- status
-|-----------------------------|
-|              |            13|
-|              |              |
-|      10      |      14      | <- monitor
-|              |              |
-|--------------|--------------|
-|      11   |12|      15      |
--------------------------------
-```
-
-0. Configuration selector, non-editable textbox, opens a file selector.
-    - Select a configuration file and populate textbox
-    - Fills in boxes on the right after parsing.
-1. Port name (i.e. '/dev/ttyUSB0', 'COM3'), textbox & dropdown menu
-    - dropdown populated by the following code:
-    ```python
-    ports = serial.tools.list_ports.comports()
-
-    for port, desc, hwid in sorted(ports):
-            print("{}: {} [{}]".format(port, desc, hwid))
-
-    """
-    Output:
-    COM3: Stellaris Virtual Serial Port (COM3) [USB VID:PID=1CBE:00FD SER=0E225345 LOCATION=1-1:x.0]
-    """
-    ```
-2. Baud rate (i.e., 19200), textbox & dropdown menu
-    - dropdown populated by list of common baud rates:
-        - 1200
-        - 2400
-        - 4800
-        - 19200
-        - 38400
-        - 57600
-        - 115200 (default)
-3. Data bits per character, textbox & dropdown menu
-    - dropdown populated by list of common data bit values
-        - FIVE
-        - SIX
-        - SEVEN
-        - EIGHT (default)
-4. Data Endianness, dropdown menu
-    - dropdown populated by two options
-        - LSB (default)
-        - MSB
-5. Synchronization bits, dropdown menu
-    - dropdown populated by list of common options
-        - 1 stop bit
-        - 2 stop bits
-6. Parity bits, dropdown menu
-    - dropdown populated by list of common parity types
-        - None (default)
-        - Odd
-        - Even
-7. Connect button. Opens up the port and begins listening for packets.
-    - Pressing the connect button switches to disconnect text. Pressing 7 again disconnects the program from the serial port.
-    - Connecting the program highlights Tab B. Highlight is turned off when Tab is entered.
-8. Status dialogue. Non-editable textbox.
-    - Displays error result (red bar) when 6 is selected or 0 is loaded:
-        - Port does not exist
-        - Parsing error in config
-            - invalid field
-            - missing field
-        - Box field is invalid or missing
-    - When no error, it can show either Disconnected (grey) or Connected (blue).
-9. Status dialogue. Same as above, but error conditions are different.
-    - Error when the following occurs:
-        - Disconnect happens abruptly (then shift to Disconnect message and color).
-        - No text in 11 when ENTER or 12 is pressed.
-        - 13 gets an invalid config
-            - invalid field
-            - missing field
-10. Packet monitor. Copyable text box. Data is displayed per character unparsed
-    or parsed.
-11. Transmit text box. Use ENTER key or 12 to send. Attempts to send text as
-    characters across serial. Does not work if the receiver is not set up to
-    catch data.
-12. Enter button. Submits whatever is in the textbox. If there is nothing in the
-    textbox, nothing is submitted.
-13. Visualizer configuration selector, non-editable textbox, opens a file selector.
-    - Select a configuration file and populate textbox
-    - If valid configuration upon parsing, loads a pyqt time series graph
-        - Maybe other types of graphs eventually
-        - All current and future data that matches the configuration
-          specifications are loaded into the graph.
-    - If invalid configuration, do nothing and display error on 9.
-14. PyQt time series graph. Displays packets filtered by config if selected.
-15. Save button. Saves all packets captured since connection into a CSV.
-
-## Config Format
-
-### Port Configuration
-
-Format
+### Format
 ```c++
 {
     "name": string,                             // OPTIONAL
@@ -162,8 +55,19 @@ Format
 }
 ```
 
-Example
+### Examples
 ```json
+// Without port name specified.
+{
+    "name": "Default Serial Configuration for an arduino device running at 115200 baud.",
+    "baud_rate": 115200,
+    "data_bits": "EIGHT",
+    "endian": "LSB",
+    "sync_bits": "ONE",
+    "parity_bits": "None"
+}
+
+// With port name specified.
 {
     "name": "RTD Sensor",
     "port_name": "/dev/ttyUSB0",
@@ -175,110 +79,277 @@ Example
 }
 ```
 
-### Packet Configuration
+Note that if you specify the port_name in your file, it might not be correct at
+the time of you plugging the device into your USB port. The application has a
+10s timer to update the port config to the list of active devices.
 
-Two types of packet configurations can be used: _intrapacket_ or _interpacket_.
-- _intrapacket_ means that the data is stored inside of the serial packet data
-  bits itself.
+---
+## Packet Configuration File Formats
 
-    Some bits may be allocated for the following:
-    - packet type
-    - data value
+Packet configuration files are very useful for filtering out your data and for
+visualizing the data on the fly. A packet configuration file, when loaded, will
+initialize a graph to display your packet data vs time.
 
-    At the moment, all data are converted as integers, but custom functions may
-    be introduced later to interpret decimal or float values.
+A couple types of packet configurations are supported. They are are in order of
+decreasing human readability and increasing data rate (i.e. they take up less
+space and are typically faster to process, so you can send more of these at once).
+- Type 0: "Human Readable Format"
+- Type 1: "Compressed CSV Format"
+- Type 2: "Encoded Chars Format"
+- Type 3: "Encoded Bit Format"
 
-    ```c++
-    Packet 1                            | Packet 2
-    Start Data              Parity Stop | Start Data              Parity Stop
-    x     [7 6 5 4 3 2 1 0] x      x x  | x     [7 6 5 4 3 2 1 0] x      x x
-          [2 1 0|4 3 2 1 0]
-            ID      DATA
-
-    // I.e.
-    0x28 -> 0b0010_1000 -> ID = 1, DATA = 8
-    ```
-- _interpacket_ means that the data is delimited by a successive stream of
-  packets interpreted as characters (the number of data bits here can be either
-  7 or 8). The packets are split into four fields, an ID, a ID-value delimiter,
-  a value, and a message-message delimeter.
-
-    The ID and first delimiter are optional.
-
-    ```c++
-    Packet
-     1    2   3  4   5   6   7   8
-    'V' 'A' 'L' ':' '1' '0' '2' ','
-    [    ID    ][D1][    val   ][D2]
-
-    // I.e.
-    VAL:102,VAL:302,VAL2:492, ...
-    ```
-
-Format
-```c++
+### Format
+```json
 {
-    "title": string,                // OPTIONAL
-    "x-axis": string,               // OPTIONAL
-    "y-axis": string,               // OPTIONAL
-    "intrapacket": {                // OPTIONAL
-        "id": [int],                // OPTIONAL, default all packets
-        "x-id": int,                // OPTIONAL, default no packets
-        "y-id": int,                // OPTIONAL, default all packets
-        "data": [int],              // OPTIONAL, default all data bits
+    "packet_title": str,            // OPTIONAL
+    "packet_description": str,      // OPTIONAL
+    "example_line": str,            // OPTIONAL
+    "graph_params": {               // MANDATORY
+        "title": str,               // MANDATORY
+        "x_axis": str,              // MANDATORY
+        "y_axis": str               // MANDATORY
     },
-    "interpacket": {                // OPTIONAL
-        "id": string,               // OPTIONAL, default disabled
-        "id-delim": string,         // OPTIONAL, default disabled
-        "message-delim": string,    // MANDATORY, default ','
+    "packet_format": {              // MANDATORY
+        "type": int,                // MANDATORY
+
+        // type 0
+        "packet_delimiters": [str], // MANDATORY
+        "packet_ids": [str],        // MANDATORY
+        "data_delimiters": [str],   // OPTIONAL
+        "ignore": [str]             // OPTIONAL
+        
+        // type 1
+        "packet_delimiters": [str], // MANDATORY
+        "packet_ids": [str],        // MANDATORY
+        "specifiers": [str],        // MANDATORY
+        "data_delimiters": [str]    // OPTIONAL
+
+        // type 2, 3
+        "header_order": [str],      // MANDATORY
+        "header_len": [int],        // MANDATORY
+        "packet_ids": [str]         // MANDATORY
     }
 }
 ```
 
-As can be seen, the intrapacket format has parameters to accept the bits in the
-packet data bits that represent the packet id and data (as the y value). In
-contrast, the interpacket format requires at least the `message-delim` parameter
-to determine the difference between two messages. The ID and ID-value delimeter
-can be specified to differentiate between packets.
+---
 
-By default, if the interpacket format is specified, then the loaded config does
-not use the intrapacket format.
+### Type 0: "Human Readable Format"
 
-Example (intrapacket)
+This packet type is primarily for interpreting human readable serial output
+from the serial monitor. The format trades data efficiency for readability. It
+doesn't work very well at high frequencies (i.e. using Serial.print() every ms).
+
+- `packet_delimiters`: Characters or Strings used to split all types of packets
+  from each other. These are typically whitespace characters.
+- `packet_ids`: Packet IDs identify all packets that should be captured; packets
+  not matching this list are scrubbed.
+- `data_delimiters`: All strings in this list are used to split the packet into
+  two halves: the ID and data. They are scrubbed during parsing.
+- `ignore`: Any strings encountered in this list are removed from the data
+  packets screened by `packet_ids`.
+
+#### Example
+
+An example stream of input from the device might be the following:
+
+```css
+motor speed: 200 rpm\nmotor speed: 215 rpm\nhello world\nmotor speed: 199 rpm\n
+```
+
+It should be pretty clear that there are two types of messages:
+- a message displaying the motor speed: `motor speed: xxx rpm`
+- a hello world message: `hello world`
+
+These messages are delimited by the newline character, `\n`.
+
+Say we want to ignore all `hello world` messages, and just capture the motor
+speed. Our configuration format will be as follows:
+
 ```json
 {
-    "title": "Temperature Over Time",
-    "x-axis": "Time (s)",
-    "y-axis": "Temp (C)",
-    "intrapacket": {
-        "id": [7, 6, 5],
-        "x-id": 0,
-        "y-id": 2,
-        "data": [4, 3, 2, 1, 0]
+    "packet_title": "Motor speed packet.",
+    "example_line": "motor speed: 200 rpm\nmotor speed: 215 rpm\nhello world\nmotor speed: 199 rpm\n",
+    "graph_params": {
+        "title": "Motor speed over time.",
+        "x_axis": "Time (ms)",
+        "y_axis": "RPM"
+    },
+    "packet_format": {
+        "type": 0,
+        "packet_delimiters": ["\n"],
+        "packet_ids": ["motor speed"],
+        "data_delimiters": [": "],
+        "ignore": [" rpm"]
     }
-}
+},
 ```
-This example takes a packet with a 3 bit ID and a 5 bit data. It looks at only
-packets with IDs 0 and 2. The data value for packets with ID 0 are the times in
-seconds, and the data value for packets with ID 2 are the temperatures in C.
 
-Example (interpacket)
+This packet format splits packets by the newline, `\n`, and splits each packet
+into an ID component and DATA component to the left and right of the
+data_delimiters, `" : "`, respectively. We discard all packets with an ID
+component that is not `motor speed`, and finally we scrub `" rpm"` from all DATA
+components remaining.
+
+---
+
+### Type 1: "Compressed CSV Format"
+
+The __Type 1__ format attempts to standardize device output for many competing
+sources. All sources of data are submitted with an ID and DATA field.
+
+This packet type revolves around the following format:
+
+`<header><data_delimiter><val><packet_delimiter>`
+
+Each packet must have these four fields. The `<header>` is a string that either
+identifies the packet is specifying an ID or DATA.
+
+- `packet_delimiters`: Characters or Strings used to split all types of packets
+  from each other. These are typically semicolons or commas (thus the misnomer,
+  'CSV' in the type name).
+- `packet_ids`: Packet IDs identify all packets that should be captured; packets
+  not matching this list are scrubbed.
+- `specifiers`: These specifiers identify the different fields in each packet.
+    - The first position in the list is the ID - it specifies the source of the
+    packet.
+    - The second position in the list is the DATA - it specifies the value being
+    emitted by the source to measure.
+    - Other specifiers are currently not supported for now. Perhaps more than
+      one DATA field can be supported. Alternatively, you can just specify
+      multiple packet_ids for the same source, i.e. RTD_TEMP, RTD_MOD_TEMP.
+- `data_delimiters`: All strings in this list are used to split the packet into
+  its specifiers. They are scrubbed during parsing.
+
+#### Example
+
+An example stream of input from the device might be the following:
+
+```css
+id:temp;data:128;id:light;data:8000;
+```
+
+We have two types of messages here: 
+- a temperature measurement message `id:temp;data:128;`
+- a light measurement message `id:light;data:8000;`
+
+Say we only want the temperature measurement messages. The configuration format
+would be as follows:
+
 ```json
 {
-    "title": "680 nm intensity",
-    "x-axis": "Time (ms)",
-    "y-axis": "F8 680nm (relative)",
-    "interpacket": {
-        "id": "F8 680nm",
-        "id-delim": " : ",
-        "message-delim": "\n"
+    "packet_title": "Temperature data packet.",
+    "example_line": "id:temp;data:128;id:light;data:8000;",
+    "graph_params": {
+        "title": "Temperature over time.",
+        "x_axis": "Time (ms)",
+        "y_axis": "Temp (C)"
+    },
+    "packet_format": {
+        "type": 1,
+        "packet_delimiters": [";"],
+        "packet_ids": ["temp"],
+        "specifiers": ["id", "data"],
+        "data_delimiters": [":"]
     }
-}
+},
 ```
-This example takes a serial set of packets from the adafruit AS7341 10 channel
-light color sensor breakout [example
-code](https://learn.adafruit.com/adafruit-as7341-10-channel-light-color-sensor-breakout?view=all).
 
-The input stream is as follows: `F8 680nm : xxx\n...\nF8 680nm : yyy\n`. This
-format allows us to extract the id: `F8 680nm`, match it, and then capture the
-data after the id-delimeter.
+This packet format splits packets by the semicolon, `;`, and splits each packet
+into an ID component and DATA component to the left and right of the
+data_delimiters, `:`, respectively. We say that every packet with an ID
+component `id` has a DATA component specifying the source ID. Every packet with
+an ID component `data` has a DATA component specifying the source data. We
+assume that any packet with an ID component `data` must follow a packet with an
+ID component `id`. If not, the current packet and any other packets before it
+waiting for a completion are thrown out. Finally, only packets with `temp` are
+accepted.
+
+---
+
+### Type 2: "Encoded Chars Format"
+
+Compared to the __Type 1__ format, the __Type 2__ format has a device streaming
+a series of bytes, and every X bytes represents a packet. The user then
+identifies the sections of the packet, in order, and the byte length of each
+section. 
+
+This packet type revolves around the following format:
+
+`<ID><DATA>`
+
+Where ID and DATA are fixed byte lengths. ID and DATA positions can be swapped.
+
+- `header_order`: This list specifies the sections inside the packet. For now,
+  only the "ID" and "DATA" sections are supported, but feel free to submit a
+  patch to add more sections.
+- `header_len`: This list specifies the length of each section inside of the
+  packet. The minimum section length is 1 byte for now. For more compressed
+  encodings, see the __intrapacket format__.
+- `packet_ids`: Packet IDs identify all packets that should be captured; packets
+  not matching this list are scrubbed.
+
+#### Example
+
+An example stream of input from the device might be the following:
+
+```css
+432000072FF
+```
+
+This is incomprehensible to the average reader. This is actually an encoded CAN
+message, of the format:
+
+`[CAN ID][CAN DATA]`
+
+Where the CAN ID is 11 bits wide (but extended to 12 bits/3 bytes) and the CAN
+DATA is 8 bytes wide (a 32 bit integer).
+
+Of course, this is all stripped from the CAN standard data frame, leaving only
+the essential data.
+
+The decoded data might be the following:
+
+```json
+CAN ID: 0x432     ->  ID:  Miles driven
+CAN DATA: 0x72FF  ->  Val: 29,439 miles
+```
+
+Anyways, the configuration would look like this:
+
+```json
+{
+    "packet_title": "Miles driven packet.",
+    "example_line": "432000072FF00000000000",
+    "graph_params": {
+        "title": "Miles driven over time.",
+        "x_axis": "Time (s)",
+        "y_axis": "Miles Driven"
+    },
+    "packet_format": {
+        "type": 2,
+        "header_order": ["ID", "DATA"],
+        "header_len": [3, 8],
+        "packet_ids": ["0x432"],
+    }
+},
+```
+
+This configuration tells us the ID comes first in the packet, followed by the
+DATA. The ID is 3 bytes wide, and the DATA is 8 bytes wide. Both fields are
+converted into hex values. Only packets with the `ID = 0x432` should be
+captured, and the rest thrown away.
+
+Note that all packets must be of these specifications for header order and
+length. You can't match packets of different data lengths.
+
+---
+
+### Type 3: "Encoded Bits Format"
+
+Finally, __Type 3__ format is an extreme version of __Type 2__ format; instead
+of bytes you can specify the specific bits across a stream of bits to represent
+your ID and DATA.
+
+It's essentially the same as __Type 2__, except the `header_len` entries
+represent bits, not bytes.
