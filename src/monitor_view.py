@@ -1,5 +1,5 @@
 """
-MonitorView.py
+monitor_view.py
 
 Author: Matthew Yu (2021).
 Contact: matthewjkyu@gmail.com
@@ -21,10 +21,11 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import sys
 
 # Custom Imports.
-from src.View import View
-from src.Graph import Graph
+from src.view import View
+from src.graph import Graph
 
 
 class MonitorView(View):
@@ -58,12 +59,6 @@ class MonitorView(View):
 
         self._serial_datastream = data_controller["serial_datastream"]
 
-        self._widget_pointers = self._data_controller["widget_pointers"]
-
-        # Setup Status.
-        self._widget_pointers["lbl_status2"].setAutoFillBackground(True)
-        self._widget_pointers["lbl_status2"].setText(self._data_controller["status"])
-
         # Setup transmission textbox and send button.
         self._widget_pointers["le_transmit_txt"].returnPressed.connect(
             self._send_packet
@@ -79,7 +74,7 @@ class MonitorView(View):
         )
 
         # Setup viewbox for qtgraph.
-        self._remove_graph()
+        # self._remove_graph()
 
         self._monitor_timer = QTimer()
         self._monitor_timer.timeout.connect(self._update_console)
@@ -97,22 +92,6 @@ class MonitorView(View):
     def _update_console(self):
         self._cycle += 1
 
-        # Update status.
-        if self._data_controller["status"] == "CONNECTED":
-            self._widget_pointers["lbl_status2"].setText(
-                self._data_controller["status"]
-            )
-            self._widget_pointers["lbl_status2"].setStyleSheet(
-                "QLabel { background-color: rgba(122, 255, 122, 255); }"
-            )
-        elif self._data_controller["status"] == "DISCONNECTED":
-            self._widget_pointers["lbl_status2"].setText(
-                self._data_controller["status"]
-            )
-            self._widget_pointers["lbl_status2"].setStyleSheet(
-                "QLabel { background-color: rgba(122, 122, 122, 255); }"
-            )
-
         # Capture read data from serial_datastream, if available.
         while not self._serial_datastream["read_lock"].tryLock(50):
             pass
@@ -125,9 +104,9 @@ class MonitorView(View):
         parsed_packet, parsed_text = self._parse_packet()
         if parsed_text:
             self._widget_pointers["te_serial_output"].append(parsed_text)
-        # Only update graph if config is set up.
-        if parsed_packet and self.graph is not None:
-            self._apply_data_to_graph(parsed_packet)
+        # # Only update graph if config is set up.
+        # if parsed_packet and self.graph is not None:
+        #     self._apply_data_to_graph(parsed_packet)
 
         # Capture status data from serial_datastream and display on textedit.
         while not self._serial_datastream["status_lock"].tryLock(50):
@@ -157,6 +136,11 @@ class MonitorView(View):
 
     # Graph management.
     def _get_file_name(self):
+        """
+        Called when the user wants to load a packet configuration file.
+        The function attempts to validate the file, and if it is valid, it
+        displays a graph on the screen and sets up the packet filter.
+        """
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
         dialog.setFilter(QDir.Files)
@@ -168,9 +152,9 @@ class MonitorView(View):
             # File validation. Only checks whether the graph can be constructed.
             if file_name[0].endswith(".json"):
                 with open(file_name[0], "r") as f:
-                    data = json.load(f)
-                    if self._is_config_valid(data):
-                        self._add_graph()
+                    packet_config = self._is_config_valid(json.load(f))
+                    # if packet_config is not None:
+                    # self._add_graph(packet_config)
                     f.close()
             else:
                 self._raise_error("Invalid file type.")
@@ -184,42 +168,25 @@ class MonitorView(View):
             # Remove it from the gui.
             widgetToRemove.setParent(None)
 
-        # Attempt to construct the graph.
-        self._data_controller["packet_config"] = data
-        try:
-            title = "Untitled"
-            if "title" in data:
-                title = data["title"]
-            x_axis = "Untitled"
-            if "x-axis" in data:
-                x_axis = data["x-axis"]
-            y_axis = "Untitled"
-            if "y-axis" in data:
-                y_axis = data["y-axis"]
-            self.graph = Graph(
-                title=title,
-                xAxisLabel=x_axis,
-                yAxisLabel=y_axis,
-                series={
-                    "packetData": {
-                        "data": {"x": [], "y": []},
-                        "multiplier": 1,
-                        "color": (255, 0, 0),
-                    },
-                    "list": ("packetData",),
+        # Construct the graph.
+        self.graph = Graph(
+            title=data["graph_params"]["title"],
+            xAxisLabel=data["graph_params"]["x_axis"],
+            yAxisLabel=data["graph_params"]["y_axis"],
+            series={
+                "packetData": {
+                    "data": {"x": [], "y": []},
+                    "multiplier": 1,
+                    "color": (255, 0, 0),
                 },
-            )
+                "list": ("packetData",),
+            },
+        )
 
-            self._add_graph(graph)
-            if not "intrapacket" in data or not "interpacket" in data:
-                raise Exception(
-                    "no intrapacket or interpacket param specified."
-                )
-        except Exception as e:
-            self._raise_error("INV_GRAPH: " + str(e))
-            self._data_controller["packet_config"] = None
-
-        self._widget_pointers["graph_layout"].addWidget(self.graph.get_layout(), 0, 0, 1, 1)
+        # Add graph widget to the layout.
+        self._widget_pointers["graph_layout"].addWidget(
+            self.graph.get_layout(), 0, 0, 1, 1
+        )
 
     def _remove_graph(self):
         """
@@ -303,41 +270,62 @@ class MonitorView(View):
         """
         pass
 
-    def _is_config_valid(self):
-        # TODO: this
-        pass
+    def _is_config_valid(self, config):
+        print("Testing", config)
+        packet_config = {"graph_params": {}, "packet_format": {}}
+        try:
+            # Check graph parameters.
+            graph_params = config["graph_params"]
+            if type(graph_params["title"]) is str:
+                packet_config["graph_params"]["title"] = graph_params["title"]
+            else:
+                raise Exception("Title must be a string.")
 
-    # Error display with status.
-    def _raise_error(self, error_str):
-        """
-        Raises an error on the status label.
+            if type(config["graph_params"]["x_axis"]) is str:
+                packet_config["graph_params"]["x_axis"] = graph_params["x_axis"]
+            else:
+                raise Exception("X-axis must be a string.")
 
-        Parameters
-        ----------
-        error_str: str
-            Error string to display.
-        """
-        self._widget_pointers["lbl_status2"].setText(error_str)
-        self._widget_pointers["lbl_status2"].setStyleSheet(
-            "QLabel { background-color: rgba(255, 0, 0, 255); }"
-        )
+            if type(graph_params["y_axis"]) is str:
+                packet_config["graph_params"]["y_axis"] = graph_params["y_axis"]
+            else:
+                raise Exception("Y-axis must be a string.")
 
-        # Set timer to set status back to OK.
-        QTimer.singleShot(15000, self._revert_error)
+            # Check packet format.
+            packet_format = config["packet_format"]
+            if packet_format["type"] in [0, 1, 2, 3]:
+                packet_config["packet_format"]["type"] = packet_format["type"]
+            else:
+                raise Exception("Type should be [0, 1, 2, 3].")
 
-    def _revert_error(self):
-        """
-        Resets the status bar after an error has been displayed for X amount of
-        time.
-        """
-        self._widget_pointers["lbl_status2"].setText(self._data_controller["status"])
-        if self._data_controller["status"] == "DISCONNECTED":
-            self._widget_pointers["lbl_status2"].setStyleSheet(
-                "QLabel { background-color: rgba(122, 122, 122, 255); }"
-            )
-        elif self._data_controller["status"] == "CONNECTED":
-            self._widget_pointers["lbl_status2"].setStyleSheet(
-                "QLabel { background-color: rgba(122, 255, 122, 255); }"
-            )
-        else:
-            pass
+            if packet_format["type"] == 0:
+                pass
+            elif packet_format["type"] == 1:
+                pass
+            else:
+                # Header order must only be ["ID", "DATA"] or ["DATA", "ID"]
+                if packet_format["header_order"] is list:
+                    pass
+                else:
+                    raise Exception("Header order should be a list.")
+
+                # Header length must be integers > 0 for both indexes.
+                if packet_format["header_len"] is list:
+                    pass
+                else:
+                    raise Exception("Header order should be a list.")
+
+                # Packet IDs must be a list of strings that can be converted
+                # into hex/binary/dec.
+                if packet_format["packet_ids"] is list:
+                    pass
+                else:
+                    raise Exception("Header order should be a list.")
+
+        except Exception as e:
+            print("Exception:", e)
+            self._raise_error("INV_CFG")
+            return None
+
+        print(packet_config)
+        return packet_config

@@ -1,5 +1,5 @@
 """
-File: Graph.py
+File: graph.py
 
 Author: Matthew Yu, Array Lead (2020).
 Contact: matthewjkyu@gmail.com
@@ -19,7 +19,7 @@ import pyqtgraph as pg
 import numpy as np
 
 # Custom Imports.
-from src.View import View
+from src.view import View
 
 
 class Graph(View):
