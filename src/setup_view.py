@@ -45,6 +45,13 @@ class SetupView(View):
         """
         Upon initialization, we perform any data and UI setup required to get
         the SetupView into a default state.
+
+        Parameters
+        ----------
+        data_controller : Dict
+            Reference to the data controller.
+        framerate : int
+            Framerate of the program (or rather, execution rate).
         """
         super(SetupView, self).__init__(
             data_controller=data_controller, framerate=framerate
@@ -80,22 +87,10 @@ class SetupView(View):
         self.init_frame(self._update_console)
 
     def _update_console(self):
-        # TODO: handle this in monitor_view.py.
-        # Clear the status buffer of error messages, if necessary.
-        status_lock = self._serial_datastream["status_lock"]
-        status_msg = None
-        if not status_lock.tryLock(View.SECOND / self._framerate):
-            return
-
-        status_buffer = self._serial_datastream["status"]
-        if len(status_buffer) != 0 and status_buffer[0] != "READY":
-            status_msg = status_buffer[0]
-            self._serial_datastream["status"] = status_buffer[1:]
-            
-        status_lock.unlock()
-
-        # if status_msg is not None:
-        #     self.raise_temp_status(status_msg, "rgba(0, 0, 255, 255)")
+        if self._data_controller["status"] == "DISCONNECTED":
+            self._widget_pointers["bu_connect"].setText("Connect")
+        elif self._data_controller["status"] == "CONNECTED":
+            self._widget_pointers["bu_connect"].setText("Disconnect")
 
     def update_ports(self):
         """
@@ -152,11 +147,11 @@ class SetupView(View):
 
         Parameters
         ----------
-        data: Any
+        data : Any
             Data to look for.
-        cb_string: Str
+        cb_string : Str
             Combo-box string to search for.
-        data_id: Str
+        data_id : Str
             String key in the unwrapped JSON file to capture.
         """
         index = self._widget_pointers[cb_string].findText(
@@ -246,22 +241,23 @@ class SetupView(View):
 
         Parameters
         ----------
-        port: Any
+        port : Any
             Proposed port name.
-        baud_rate: Any
+        baud_rate : Any
             Proposed baud rate.
-        data_bits: Any
+        data_bits : Any
             Proposed data bits.
-        endianness: Any
+        endianness : Any
             Proposed endianness.
-        parity_bits: Any
+        parity_bits : Any
             Proposed parity bits.
-        sync_bits: Any
+        sync_bits : Any
             Proposed sync bits.
 
         Returns
         -------
-        Bool: True if valid config, false otherwise.
+        Bool
+            True if valid config, false otherwise.
         """
         # Check if port is currently open.
         listed_ports = capture_port_names()

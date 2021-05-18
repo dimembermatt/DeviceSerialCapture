@@ -2,15 +2,17 @@
     "packet_title": "Type 2 Example",
     "packet_description": "A bytestream where every 11 bytes represents a packet. 3 bytes are used to represent the source ID, and 8 bytes are used to represent the source DATA. This is similar to a stripped down version of the CAN standard data frame.",
     "example_line": "0x43200007241",
-    "graph_params": {
-        "title": "Temperature data over time.",
-        "x_axis": "Time (ms)",
-        "y_axis": "Temperature (C)"
-    },
     "packet_format": {
         "type": 2,
         "header_order": ["ID", "DATA"],
         "header_len": [3, 8],
         "packet_ids": ["0x432"],
+        "graph_definitions": {
+            "0x432": {
+                "title": "Temperature data over time.",
+                "x_axis": "Time (ms)",
+                "y_axis": "Temperature (C)"
+            }
+        }
     }
 }

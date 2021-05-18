@@ -4,7 +4,7 @@ packet_manager.py
 Author: Matthew Yu (2021).
 Contact: matthewjkyu@gmail.com
 Created: 05/14/21
-Last Modified: 05/14/21
+Last Modified: 05/17/21
 
 Description: Implements the PacketManager class, which collects, sorts, and
 manages serial data packets.
@@ -12,7 +12,8 @@ manages serial data packets.
 
 from collections import OrderedDict
 import csv
-import datetime
+import os.path
+import time
 
 
 class PacketManager:
@@ -28,6 +29,18 @@ class PacketManager:
         self._packets["all"] = OrderedDict()
 
     def insert_packet(self, packet_series, packet_name, packet_data):
+        """
+        Inserts a packet into the packet manager.
+
+        Parameters
+        ----------
+        packet_series : Str
+            Type of the packet.
+        packet_name : Str
+            Unique identifier of the packet.
+        packet_data : Any
+            Data associated with the packet.
+        """
         self._packets["all"][packet_name] = packet_data
         if packet_series not in self._packets:
             self._packets[packet_series] = OrderedDict()
@@ -40,8 +53,10 @@ class PacketManager:
 
         Parameters
         ----------
-        packet_series: Type of the packet.
-        packet_name: Unique identifier of the packet.
+        packet_series : Str
+            Type of the packet.
+        packet_name : Str
+            Unique identifier of the packet.
         """
         if packet_name in self._packets["all"]:
             del self._packets["all"][packet_name]
@@ -55,12 +70,14 @@ class PacketManager:
 
         Parameters
         ----------
-        packet_series: Type of the packet.
+        packet_series : Str
+            Type of the packet.
 
         Returns
         -------
-        Ordered dict of the series specified, or None if the packet_series is
-        invalid.
+        OrderedDict/None
+            Ordered dict of the series specified, or None if the packet_series
+            is invalid.
         """
         if packet_series in self._packets:
             return self._packets[packet_series]
@@ -70,15 +87,33 @@ class PacketManager:
         """
         Saves the packet_series, if valid, into a CSV organized by order of
         insertion. The CSV has two columns: the packet_name and the packet_data.
-        The file is named after the packet_series + the latest timestamp.
+        The file is named after the packet_series and is in a folder in output/
+        named after the latest timestamp.
 
         Parameters
         ----------
-        packet_series: series to save.
+        packet_series : Str
+            Series to save.
         """
+        curr_dir = os.getcwd()
+        new_dir = os.path.join(curr_dir, r"output/" + time.strftime("%Y%m%d-%H%M%S"))
+        if not os.path.exists(new_dir):
+            os.makedirs(new_dir)
+
         if packet_series in self._packets:
-            with open(packet_series + datetime.datetime.now() + ".csv", "w") as file:
+            with open(new_dir + "/" + packet_series + ".csv", "w") as file:
                 writer = csv.writer(file, delimiter=",", lineterminator="\n")
                 writer.writerow(["key", "value"])
                 for key, value in self._packets[packet_series].items():
                     writer.writerow([key, value])
+
+    def get_all_packet_series(self):
+        """
+        Returns a list of all packet series defined.
+
+        Returns
+        -------
+        [str]
+            List of packets series defined.
+        """
+        return list(self._packets.keys())

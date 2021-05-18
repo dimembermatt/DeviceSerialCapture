@@ -101,14 +101,9 @@ space and are typically faster to process, so you can send more of these at once
 ### Format
 ```json
 {
-    "packet_title": str,            // OPTIONAL
+    "packet_title": str,            // MANDATORY
     "packet_description": str,      // OPTIONAL
     "example_line": str,            // OPTIONAL
-    "graph_params": {               // MANDATORY
-        "title": str,               // MANDATORY
-        "x_axis": str,              // MANDATORY
-        "y_axis": str               // MANDATORY
-    },
     "packet_format": {              // MANDATORY
         "type": int,                // MANDATORY
 
@@ -116,21 +111,39 @@ space and are typically faster to process, so you can send more of these at once
         "packet_delimiters": [str], // MANDATORY
         "packet_ids": [str],        // MANDATORY
         "data_delimiters": [str],   // OPTIONAL
-        "ignore": [str]             // OPTIONAL
+        "ignore": [str],            // OPTIONAL
         
         // type 1
         "packet_delimiters": [str], // MANDATORY
         "packet_ids": [str],        // MANDATORY
         "specifiers": [str],        // MANDATORY
-        "data_delimiters": [str]    // OPTIONAL
+        "data_delimiters": [str],   // OPTIONAL
 
         // type 2, 3
         "header_order": [str],      // MANDATORY
         "header_len": [int],        // MANDATORY
-        "packet_ids": [str]         // MANDATORY
+        "packet_ids": [str],        // MANDATORY
+
+        "graph_definitions": {      // OPTIONAL
+            "id": {
+                "title": str,       // OPTIONAL
+                "x_axis": str,      // OPTIONAL
+                "y_axis": str       // OPTIONAL
+            }
+        }
     }
 }
 ```
+
+---
+
+### Packet Graphs
+
+Packet graphs offer a real time display of the packets entering the system.
+These are defined in key-value pair `"graph_definitions"`, and are optional.
+Each entry in the dictionary must correspond to the entries in the
+`"packet_ids"` list; whenever a packet with a matching ID is found, the
+corresponding graph, if any, is updated. 
 
 ---
 
@@ -170,19 +183,21 @@ speed. Our configuration format will be as follows:
 {
     "packet_title": "Motor speed packet.",
     "example_line": "motor speed: 200 rpm\nmotor speed: 215 rpm\nhello world\nmotor speed: 199 rpm\n",
-    "graph_params": {
-        "title": "Motor speed over time.",
-        "x_axis": "Time (ms)",
-        "y_axis": "RPM"
-    },
     "packet_format": {
         "type": 0,
         "packet_delimiters": ["\n"],
         "packet_ids": ["motor speed"],
         "data_delimiters": [": "],
-        "ignore": [" rpm"]
+        "ignore": [" rpm"],
+        "graph_definitions": {
+            "motor speed": {
+                "title": "Motor speed over time.",
+                "x_axis": "Time (ms)",
+                "y_axis": "RPM"
+            }
+        }
     }
-},
+}
 ```
 
 This packet format splits packets by the newline, `\n`, and splits each packet
@@ -240,19 +255,21 @@ would be as follows:
 {
     "packet_title": "Temperature data packet.",
     "example_line": "id:temp;data:128;id:light;data:8000;",
-    "graph_params": {
-        "title": "Temperature over time.",
-        "x_axis": "Time (ms)",
-        "y_axis": "Temp (C)"
-    },
     "packet_format": {
         "type": 1,
         "packet_delimiters": [";"],
         "packet_ids": ["temp"],
         "specifiers": ["id", "data"],
-        "data_delimiters": [":"]
+        "data_delimiters": [":"],
+        "graph_definitions": {
+            "temp": {
+                "title": "Temperature over time.",
+                "x_axis": "Time (ms)",
+                "y_axis": "Temp (C)"
+            }
+        }
     }
-},
+}
 ```
 
 This packet format splits packets by the semicolon, `;`, and splits each packet
@@ -321,18 +338,20 @@ Anyways, the configuration would look like this:
 {
     "packet_title": "Miles driven packet.",
     "example_line": "432000072FF00000000000",
-    "graph_params": {
-        "title": "Miles driven over time.",
-        "x_axis": "Time (s)",
-        "y_axis": "Miles Driven"
-    },
     "packet_format": {
         "type": 2,
         "header_order": ["ID", "DATA"],
         "header_len": [3, 8],
         "packet_ids": ["0x432"],
+        "graph_definitions": {
+            "0x432": {
+                "title": "Miles driven over time.",
+                "x_axis": "Time (s)",
+                "y_axis": "Miles Driven"
+            }
+        }
     }
-},
+}
 ```
 
 This configuration tells us the ID comes first in the packet, followed by the

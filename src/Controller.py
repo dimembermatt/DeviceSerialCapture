@@ -44,12 +44,13 @@ class Controller:
     """
 
     def __init__(self):
+        # Framerate of the program (or rather, execution rate).
         self._framerate = 30
 
+        # Data controller storage.
         self._data_controller = {
             # Reference to self for serial worker management.
             "app": self,
-
             # The current status of the application. One of two states:
             # - DISCONNECTED
             # - CONNECTED
@@ -66,7 +67,7 @@ class Controller:
                 "parity_bits": "None",
             },
             # A dictionary of currently set packet filters for display.
-            "packet_configs": {},
+            "packet_config": None,
             # Data structure for managing collected serial packets.
             "packet_manager": PacketManager(),
             # The serial thread executing communication with the port.
@@ -149,7 +150,7 @@ class Controller:
 
         # 3.2. Tie functionality to edge buttons.
         _widget_pointers["bu_min"].clicked.connect(lambda: self.win.showMinimized())
-        _widget_pointers["bu_min"].clicked.connect(lambda: self.win.showMinimized())
+        _widget_pointers["bu_max"].clicked.connect(lambda: self.win.showMaximized())
         _widget_pointers["bu_close"].clicked.connect(lambda: self.shutdown())
 
         # 3.3. Set up setup and monitor view.
@@ -158,7 +159,9 @@ class Controller:
         self.win.show()
 
         # 4. Enable callbacks.
-        self._data_controller["serial_thread"] = SerialWorker(self._data_controller)
+        self._data_controller["serial_thread"] = self.SerialWorker(
+            self._data_controller
+        )
         self._data_controller["serial_thread"].start()
 
         # 5. Set up timers.
@@ -183,6 +186,11 @@ class Controller:
         application.
 
         Handler for the SIGINT signal.
+
+        Parameters
+        ----------
+        args: Any
+            Unused.
         """
         sys.stderr.write("\r")
         if (
@@ -207,7 +215,7 @@ class Controller:
 
     def _start_serial_thread(self):
         """
-        Sets up a serial thread.
+        Enables SerialWorker execution.
         """
         self._data_controller["serial_thread"].enable_serial(
             self._data_controller["config"]
@@ -215,140 +223,181 @@ class Controller:
 
     def _stop_serial_thread(self):
         """
-        Stops an existing serial thread.
+        Disables SerialWorker execution.
         """
         self._data_controller["serial_thread"].disable_serial()
 
-
-class SerialWorker(QThread):
-    def __init__(self, data_controller):
-        super(SerialWorker, self).__init__()
-        self._data_controller = data_controller
-        self._serial_datastream = data_controller["serial_datastream"]
-        self._update_config(data_controller["config"])
-        self._enabled = False
-
-    def enable_serial(self, config):
-        self._update_config(config)
-        self._enabled = True
-
-    def disable_serial(self):
-        self._enabled = False
-
-    def _update_config(self, config):
-        self._config = config.copy()
-        # Convert config fields into pyserial recognized inputs
-        if config["data_bits"] == "FIVE":
-            self._config["data_bits"] = serial.FIVEBITS
-        elif config["data_bits"] == "SIX":
-            self._config["data_bits"] = serial.SIXBITS
-        elif config["data_bits"] == "SEVEN":
-            self._config["data_bits"] = serial.SEVENBITS
-        else:
-            self._config["data_bits"] = serial.EIGHTBITS
-
-        if config["parity_bits"] == "None":
-            self._config["parity_bits"] = serial.PARITY_NONE
-        elif config["parity_bits"] == "Odd":
-            self._config["parity_bits"] = serial.PARITY_ODD
-        else:
-            self._config["parity_bits"] = serial.PARITY_EVEN
-
-        if config["sync_bits"] == "ONE":
-            self._config["sync_bits"] = serial.STOPBITS_ONE
-        else:
-            self._config["sync_bits"] = serial.STOPBITS_TWO
-
-    def run(self):
+    class SerialWorker(QThread):
         """
-        Initiates a serial connection that communicates with a device. Bytes are
-        read from the device and put into serial_datastream["read"] and bytes in
-        serial_datastream["write"] are sent to the device.
+        The SerialWorker class manages communication with the serial device over
+        USB. It propagates sent and received messages, and manages status messages.
         """
-        # Infinite loop.
-        while True:
-            # Run serial when enabled.
-            if self._enabled:
-                self._run_serial()
+
+        def __init__(self, data_controller):
+            """
+            Initializes the serial worker.
+
+            Parameters
+            ----------
+            data_controller : Dict
+                Reference to the data controller defined in Controller.__init__()
+            """
+            super(Controller.SerialWorker, self).__init__()
+            self._data_controller = data_controller
+            self._serial_datastream = data_controller["serial_datastream"]
+            self._update_config(data_controller["config"])
+            self._enabled = False
+
+        def enable_serial(self, config):
+            """
+            Enables serial communication.
+
+            Parameters
+            ----------
+            config : Dict
+                Reference to the configuration of the serial device.
+            """
+            self._update_config(config)
+            self._enabled = True
+
+        def disable_serial(self):
+            """
+            Disables serial communication.
+            """
+            self._enabled = False
+
+        def _update_config(self, config):
+            """
+            Normalizes the passed config with Serial readable enums.
+
+            Parameters
+            ----------
+            config : Dict
+                Reference to the configuration of the serial device.
+            """
+            self._config = config.copy()
+            # Convert config fields into pyserial recognized inputs
+            if config["data_bits"] == "FIVE":
+                self._config["data_bits"] = serial.FIVEBITS
+            elif config["data_bits"] == "SIX":
+                self._config["data_bits"] = serial.SIXBITS
+            elif config["data_bits"] == "SEVEN":
+                self._config["data_bits"] = serial.SEVENBITS
             else:
-                self.msleep(50)
+                self._config["data_bits"] = serial.EIGHTBITS
 
-    def _run_serial(self):
-        """
-        Main loop where serial is managed.
-        """
-        # Attempt to open the serial connection.
-        try:
-            self._serial_connection = Serial(
-                self._config["port_name"],
-                self._config["baud_rate"],
-                self._config["data_bits"],
-                self._config["parity_bits"],
-                self._config["sync_bits"],
-                timeout=0.5,
-                write_timeout=0.5,
-            )
-            self._update_status("READY")
-        except Exception as e:
-            self._close_serial("Serial EOPEN: " + str(e))
+            if config["parity_bits"] == "None":
+                self._config["parity_bits"] = serial.PARITY_NONE
+            elif config["parity_bits"] == "Odd":
+                self._config["parity_bits"] = serial.PARITY_ODD
+            else:
+                self._config["parity_bits"] = serial.PARITY_EVEN
 
-        # Poll the serial connection until exit.
-        _read_buffer = self._serial_datastream["read"]
-        _read_lock = self._serial_datastream["read_lock"]
-        _write_buffer = self._serial_datastream["write"]
-        _write_lock = self._serial_datastream["write_lock"]
-        id = 0
-        while self._serial_connection.isOpen() and self._enabled:
+            if config["sync_bits"] == "ONE":
+                self._config["sync_bits"] = serial.STOPBITS_ONE
+            else:
+                self._config["sync_bits"] = serial.STOPBITS_TWO
+
+        def run(self):
+            """
+            Initiates a serial connection that communicates with a device. Bytes are
+            read from the device and put into serial_datastream["read"] and bytes in
+            serial_datastream["write"] are sent to the device.
+            """
+            # Infinite loop.
+            while True:
+                # Run serial when enabled.
+                if self._enabled:
+                    self._run_serial()
+                else:
+                    self.msleep(50)
+
+        def _run_serial(self):
+            """
+            Main loop where serial is managed.
+            """
+            # Attempt to open the serial connection.
             try:
-                # While alive, any received packets are captured and dumped into
-                # serial_datastream["read"].
-                response = self._serial_connection.read(500)
-                while not _read_lock.tryLock(50):
-                    pass
-                if response != b"":
-                    print("Read({}): {}".format(id, response.decode("utf-8")))
-                    _read_buffer.append(response)
-                _read_lock.unlock()
-
-                # While alive, any packets in serial_datastream["write"] are
-                # sent.
-                if _write_buffer:
-                    # To reduce lock time, capture first read in write array only.
-                    write_set_len = len(_write_buffer)
-                    write_set = _write_buffer[0:write_set_len]
-                    print("Write({}): {}".format(id, str(write_set)))
-                    try:
-                        for entry in write_set:
-                            self._serial_connection.write(entry)
-                    except Exception as e:
-                        _update_status("Serial Write: " + str(e))
-
-                    # Clear out what we have read.
-                    while not _write_lock.tryLock(50):
-                        pass
-                    _write_buffer = _write_buffer[write_set_len:]
-                    _write_lock.unlock()
-                
-                id += 1
+                self._serial_connection = Serial(
+                    self._config["port_name"],
+                    self._config["baud_rate"],
+                    self._config["data_bits"],
+                    self._config["parity_bits"],
+                    self._config["sync_bits"],
+                    timeout=0.5,
+                    write_timeout=0.5,
+                )
+                self._update_status("READY")
             except Exception as e:
-                self._close_serial("Serial EACCESS: " + str(e))
+                self._close_serial("Serial EOPEN: " + str(e))
 
-        self._close_serial("Serial connection was closed.")
+            # Poll the serial connection until exit.
+            _read_buffer = self._serial_datastream["read"]
+            _read_lock = self._serial_datastream["read_lock"]
+            _write_buffer = self._serial_datastream["write"]
+            _write_lock = self._serial_datastream["write_lock"]
+            id = 0
+            while self._serial_connection.isOpen() and self._enabled:
+                try:
+                    # While alive, any received packets are captured and dumped into
+                    # serial_datastream["read"].
+                    response = self._serial_connection.read(500)
+                    while not _read_lock.tryLock(50):
+                        pass
+                    if response != b"":
+                        print("Read({}): {}".format(id, response.decode("utf-8")))
+                        _read_buffer.append(response)
+                    _read_lock.unlock()
 
-    def _update_status(self, msg):
-        """
-        Updates the status FIFO in the datastream.
-        """
-        while not self._serial_datastream["status_lock"].tryLock(50):
-            pass
-        self._serial_datastream["status"].append(msg)
-        self._serial_datastream["status_lock"].unlock()
+                    # While alive, any packets in serial_datastream["write"] are
+                    # sent.
+                    if _write_buffer:
+                        # To reduce lock time, capture first read in write array only.
+                        write_set_len = len(_write_buffer)
+                        write_set = _write_buffer[0:write_set_len]
+                        print("Write({}): {}".format(id, str(write_set)))
+                        try:
+                            for entry in write_set:
+                                self._serial_connection.write(entry)
+                        except Exception as e:
+                            _update_status("Serial Write: " + str(e))
 
-    def _close_serial(self, msg):
-        """
-        Update status on connection close or exception.
-        """
-        self._enabled = False
-        self._update_status(msg)
-        self._serial_connection.close()
-        self._data_controller["status"] = "DISCONNECTED"
+                        # Clear out what we have read.
+                        while not _write_lock.tryLock(50):
+                            pass
+                        _write_buffer = _write_buffer[write_set_len:]
+                        _write_lock.unlock()
+
+                    id += 1
+                except Exception as e:
+                    self._close_serial("Serial EACCESS: " + str(e))
+
+            self._close_serial("Serial connection was closed.")
+
+        def _update_status(self, msg):
+            """
+            Updates the status FIFO in the datastream.
+
+            Parameters
+            ----------
+            msg : Str
+                Message to pass to the serial datastream.
+            """
+            while not self._serial_datastream["status_lock"].tryLock(50):
+                pass
+            self._serial_datastream["status"].append(msg)
+            self._serial_datastream["status_lock"].unlock()
+
+        def _close_serial(self, msg):
+            """
+            Update status on connection close or exception.
+
+            Parameters
+            ----------
+            msg : Str
+                Message to pass to the serial datastream.
+            """
+            self._enabled = False
+            self._update_status(msg)
+            self._serial_connection.close()
+            self._data_controller["status"] = "DISCONNECTED"
