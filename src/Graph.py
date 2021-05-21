@@ -99,7 +99,7 @@ class Graph(View):
         yAxisLabel: String
             Label for the Y Axis.
         """
-        super(Graph, self).__init__()
+        super(Graph, self).__init__(data_controller={})
 
         self._series = series
 

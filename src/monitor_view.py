@@ -88,6 +88,12 @@ class MonitorView(View):
         # The bytes that have yet to be parsed.
         self._bytes_to_parse = bytearray()
 
+        # Dict referring to graphs in the monitor view.
+        self.graphs = {}
+
+        self.idx = 0  # TODO: replace idx with series specific ID
+
+
     def _update_console(self):
         """
         Performs any required actions at FPS.
@@ -111,7 +117,7 @@ class MonitorView(View):
             print("Packets:", packets_parsed)
             for packet in packets_parsed:
                 # Update active graphs.
-
+                self._apply_data_to_graph(packet)
                 # Update the text edit.
                 self._widget_pointers["te_serial_output"].append(packet["text"])
             self._widget_pointers["te_serial_output"].moveCursor(QTextCursor.End)
@@ -167,27 +173,22 @@ class MonitorView(View):
             else:
                 self.raise_error("Invalid file type.")
 
-    def _add_graph(self, data):
+    def _add_graph(self, graph_params, graph_ID):
         """
         Adds an active graph to the UI tabview.
 
         Parameters
         ----------
-        data : TODO: this
+        graph_params : Dict
+            Parameters of the graph to define.
+        graph_ID : Str
+            Name of the graph.
         """
-        # Remove any existing widgets first.
-        for i in reversed(range(self._widget_pointers["graph_layout"].count())):
-            widgetToRemove = self._widget_pointers["graph_layout"].itemAt(i).widget()
-            # Remove it from the layout list.
-            self._widget_pointers["graph_layout"].removeWidget(widgetToRemove)
-            # Remove it from the gui.
-            widgetToRemove.setParent(None)
-
         # Construct the graph.
-        self.graph = Graph(
-            title=data["graph_params"]["title"],
-            xAxisLabel=data["graph_params"]["x_axis"],
-            yAxisLabel=data["graph_params"]["y_axis"],
+        self.graphs[graph_ID] = Graph(
+            title=graph_params["title"],
+            xAxisLabel=graph_params["x_axis"],
+            yAxisLabel=graph_params["y_axis"],
             series={
                 "packetData": {
                     "data": {"x": [], "y": []},
@@ -199,26 +200,14 @@ class MonitorView(View):
         )
 
         # Add graph widget to the layout.
-        self._widget_pointers["graph_layout"].addWidget(
-            self.graph.get_layout(), 0, 0, 1, 1
-        )
+        widget = self.graphs[graph_ID].get_layout()
+        self._widget_pointers["tab_packet_visualizer"].addTab(widget, graph_params["title"])
 
     def _remove_graph(self):
         """
         Sets the graphing region to a label asking to set the packet configuration.
         """
-        for i in reversed(range(self._widget_pointers["graph_layout"].count())):
-            widgetToRemove = self._widget_pointers["graph_layout"].itemAt(i).widget()
-            # Remove it from the layout list.
-            self._widget_pointers["graph_layout"].removeWidget(widgetToRemove)
-            # Remove it from the gui.
-            widgetToRemove.setParent(None)
-
-        label = QLabel("No packet configuration selected.")
-        label.setStyleSheet("QLabel { color : white; }")
-        self._widget_pointers["graph_layout"].addWidget(label, 0, 0, 1, 1)
-
-        self.graph = None
+        pass
 
     def _apply_data_to_graph(self, packet):
         """
@@ -230,7 +219,8 @@ class MonitorView(View):
         packet : Dict
             Adds a packet to an active graph.
         """
-        self.graph.addPoint("packetData", packet["x"], packet["y"])
+        self.graphs[packet["series"]].addPoint("packetData", self.idx, float(packet["data"]))
+        self.idx += 1
 
     # Packet management.
     def _add_packet_config(self, config):
@@ -317,8 +307,8 @@ class MonitorView(View):
                 return
 
         if (
-            "graph_definitions" not in subconfig
-            or type(subconfig["graph_definitions"]) is not list
+            "graph_definitions" in subconfig
+            and type(subconfig["graph_definitions"]) is dict
         ):
             # Check each entry in graph_definitions.
             for entry in subconfig["packet_ids"]:
@@ -345,6 +335,10 @@ class MonitorView(View):
                         or type(graph_config["y_axis"]) is not str
                     ):
                         graph_config["y_axis"] = "Unconfigured"
+
+                # Add graph to the monitor view.
+                self._widget_pointers["tab_packet_visualizer"].clear()
+                self._add_graph(subconfig["graph_definitions"][entry], entry)
 
         # Passing all mandatory checks, update the packet_config dict with the
         # newest config.

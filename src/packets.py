@@ -257,7 +257,7 @@ class Packets:
         #   fail, save the packets state, and retry.
 
         # Remove remnant of packet splitting.
-        if packets[-1] == ['']:
+        if packets[-1] == [""]:
             packets = packets[:-1]
 
         # Organize the packets as a stack and build a usable set of packets.
@@ -275,12 +275,18 @@ class Packets:
 
                 # Check if ID candidate is correct (Has correct num
                 # args, matches specifier)
-                if len(packet_id_candidate) != num_data_delims or packet_id_candidate[0] != specifiers[0]:
+                if (
+                    len(packet_id_candidate) != num_data_delims
+                    or packet_id_candidate[0] != specifiers[0]
+                ):
                     bad_ID = True
-                
+
                 # Check if DATA candidate is correct (Has correct num
                 # args, matches specifier)
-                if len(packet_data_candidate) != num_data_delims or packet_data_candidate[0] != specifiers[1]:
+                if (
+                    len(packet_data_candidate) != num_data_delims
+                    or packet_data_candidate[0] != specifiers[1]
+                ):
                     bad_DATA = True
 
                 if bad_ID and bad_DATA:
@@ -402,7 +408,7 @@ class Packets:
         """
         # Remove remnant of packet splitting.
         comparison_list = packets_full
-        if packets_full[-1] == '':
+        if packets_full[-1] == "":
             comparison_list = packets_full[:-1]
 
         if len(packets) % 2:
@@ -444,7 +450,10 @@ class Packets:
             packet_id = packets[idx]
             packet_data = packets[idx + 1]
 
-            if len(packet_id) == num_data_delims and len(packet_data) == num_data_delims:
+            if (
+                len(packet_id) == num_data_delims
+                and len(packet_data) == num_data_delims
+            ):
                 if packet_id[1] in packet_ids and packet_data[1] != "":
                     valid_packets.append(
                         {

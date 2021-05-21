@@ -40,7 +40,7 @@ class View:
 
         Parameters
         ----------
-        dataController: Dictionary
+        data_controller: Dictionary
             reference to the DataController object which manages the program
             simulation pipeline.
         framerate: int
@@ -54,7 +54,8 @@ class View:
         self._data_controller = data_controller
 
         # References to UI elements generated from the controller.
-        self._widget_pointers = self._data_controller["widget_pointers"]
+        if "widget_pointers" in self._data_controller:
+            self._widget_pointers = self._data_controller["widget_pointers"]
 
     def get_layout(self):
         """
