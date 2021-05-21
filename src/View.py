@@ -1,26 +1,29 @@
 """
 view.py
 
-Author: Matthew Yu, Array Lead (2020).
+Author: Matthew Yu (2021).
 Contact: matthewjkyu@gmail.com
 Created: 04/29/21
-Last Modified: 05/16/21
+Last Modified: 05/21/21
 
-Description: Implements the parent View class for tabs in the Controller. Based
+Description: Implements the parent View class for program UI elements. Based
 off of the View class used for PVSim (https://github.com/lhr-solar/Array-Simulation).
 """
 # Library Imports.
-from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QTimer
 
-# Custom Imports.
-
-
+# Class Implementation.
 class View:
     """
     The View class is a concrete base class that provides a common API
     for derived classes to use. It manages the widgets within each tab during their
-    lifetimes. A View roughly corresponds to a tab in the Controller.
+    lifetimes. A View roughly corresponds to a single composite UI element.
+    The View class contains three elements:
+    - A layout, which is the widget UI reference.
+    - A framerate, which is tied to a recurring function which can be set by the
+      user. Typically the recurring function is for updating the UI or
+      processing data.
     """
 
     # Some internal color palettes.
@@ -34,28 +37,21 @@ class View:
     # Timing constants.
     SECOND = 1000  # in milliseconds.
 
-    def __init__(self, data_controller=None, framerate=30):
+    def __init__(self, framerate=30):
         """
         Initializes a view object for displaying data.
 
         Parameters
         ----------
-        data_controller: Dictionary
-            reference to the DataController object which manages the program
-            simulation pipeline.
         framerate: int
             Number of updates per second for realtime graphing and graphics.
         """
+        # Execution framerate and QTimer.
         self._framerate = framerate
+        self._frame_timer = None
+
+        # Reference to the view widget.
         self._layout = None
-
-        # The datastoreParent is a reference to the overarching DataController,
-        # which exposes its API to user Views.
-        self._data_controller = data_controller
-
-        # References to UI elements generated from the controller.
-        if "widget_pointers" in self._data_controller:
-            self._widget_pointers = self._data_controller["widget_pointers"]
 
     def get_layout(self):
         """
@@ -66,16 +62,6 @@ class View:
         reference: layout of the View.
         """
         return self._layout
-
-    def get_data_controller(self):
-        """
-        Returns a reference to the internal data representation.
-
-        Returns
-        -------
-        any: Data store of the view.
-        """
-        return self._data_controller
 
     def get_framerate(self):
         """
@@ -96,6 +82,11 @@ class View:
         function: Reference
             Reference to a function to execute every frame.
         """
+        # Stop any other frame timers already running.
+        if self._frame_timer is not None:
+            self._frame_timer.stop()
+
+        # Set up a new frame timer.
         if function is not None:
             self._frame_timer = QTimer()
             self._frame_timer.timeout.connect(function)
@@ -107,50 +98,3 @@ class View:
         """
         if self._frame_timer:
             self._frame_timer.stop()
-
-    def raise_status(self, status_str, status_color_str):
-        """
-        Raises a status message indefinitely.
-        """
-        self._widget_pointers["lbl_status"].setText(status_str)
-        self._widget_pointers["lbl_status"].setStyleSheet(
-            "QLabel { background-color: " + status_color_str + "; }"
-        )
-
-    def raise_temp_status(self, status_str, status_color_str):
-        """
-        Raises a status message on the status label for 10 seconds.
-        """
-        self._widget_pointers["lbl_status"].setText(status_str)
-        self._widget_pointers["lbl_status"].setStyleSheet(
-            "QLabel { background-color: " + status_color_str + "; }"
-        )
-
-        # Set timer to set status back to OK.
-        QTimer.singleShot(10000, self.revert_temp_status)
-
-    def raise_error(self, error_str):
-        """
-        Raises an error on the status label.
-
-        Parameters
-        ----------
-        error_str: str
-            Error string to display.
-        """
-        self.raise_temp_status(error_str, "rgba(255, 0, 0, 255)")
-
-    def revert_temp_status(self):
-        """
-        Resets the status bar after an error has been displayed for X amount of
-        time.
-        """
-        self._widget_pointers["lbl_status"].setText(self._data_controller["status"])
-        if self._data_controller["status"] == "DISCONNECTED":
-            self._widget_pointers["lbl_status"].setStyleSheet(
-                "QLabel { background-color: rgba(122, 122, 122, 255); }"
-            )
-        elif self._data_controller["status"] == "CONNECTED":
-            self._widget_pointers["lbl_status"].setStyleSheet(
-                "QLabel { background-color: rgba(122, 255, 122, 255); }"
-            )

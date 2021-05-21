@@ -4,18 +4,18 @@ packet_manager.py
 Author: Matthew Yu (2021).
 Contact: matthewjkyu@gmail.com
 Created: 05/14/21
-Last Modified: 05/17/21
+Last Modified: 05/21/21
 
 Description: Implements the PacketManager class, which collects, sorts, and
 manages serial data packets.
 """
-
+# Library Imports.
 from collections import OrderedDict
 import csv
 import os.path
 import time
 
-
+# Class Implementation.
 class PacketManager:
     """
     The PacketManager class manages serial data packets. It has the ability to
@@ -101,6 +101,7 @@ class PacketManager:
             os.makedirs(new_dir)
 
         if packet_series in self._packets:
+            print("Writing:", self._packets[packet_series])
             with open(new_dir + "/" + packet_series + ".csv", "w") as file:
                 writer = csv.writer(file, delimiter=",", lineterminator="\n")
                 writer.writerow(["key", "value"])

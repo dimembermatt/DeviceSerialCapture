@@ -1,54 +1,61 @@
 """
-packet.py
+packet_parser.py
 
 Author: Matthew Yu (2021).
 Contact: matthewjkyu@gmail.com
 Created: 05/17/21
-Last Modified: 05/17/21
+Last Modified: 05/21/21
 
-Description: Implements the Packets class, which consumes a stream of bytes and
-converting it into a packet defined by a configuration.
+Description: Implements the PacketParser class, which consumes a stream of bytes
+and converts them into readable packets defined by a configuration.
 
-TODO:
- - Does not handle packet sizes of 5, 6, or 7 bits. Might want to do bit
+ - TODO:Does not handle packet sizes of 5, 6, or 7 bits. Might want to do bit
    padding.
- - Some methods are hacky and require proper documentation or cleanup.
 """
-
+# Library Imports.
 import re
-import time
 
-
-class Packets:
+# Class Implementation.
+class PacketParser:
     """
-    The Packets class generates packets given a serial stream. A packet is of the
-    format:
+    The PacketParser class generates a set of packets given a serial stream.
+    A packet is of theformat:
     {
-        "text": str,
-        "series": str,
-        "name": str,
-        "data": Any
+        "text": str,    # Plaintext equivalent of the packet.
+        "series": str,  # Series the packet belongs to, defined by a config.
+        "x_val": int,   # The independent variable of the packet.
+        "y_val": Any    # The dependent variable of the packet.
     }
     """
 
-    def __init__(self, byte_stream, config):
+    def __init__(self, config):
         """
-        Initializes and configures a new packet.
+        Initializes and configures a new packet parser.
+
+        Parameters
+        ----------
+        config : Dict
+            Packet configuration to consult.
+        """
+        self._packet_ID = 0
+        self._packets = []
+        self._byte_stream = b""
+        self._cleaned_byte_stream = None
+        self._config = config
+
+    def parse(self, byte_stream):
+        """
+        Appends the byte_stream to the current set of bytes and updates the list
+        of packets to report after parsing it.
 
         Parameters
         ----------
         byte_stream : ByteArray
             Bytes to translate into a packet.
-        config : Dict
-            Packet configuration to consult.
         """
-        self._packets = []
-        self._byte_stream = byte_stream
-        self._cleaned_byte_stream = None
-        self._config = config
-
-        if config is not None:
-            packet_type = config["packet_format"]["type"]
+        self._byte_stream += byte_stream
+        if self._config is not None:
+            packet_type = self._config["packet_format"]["type"]
             if packet_type == 0:
                 # 1. Split the bytearray into packets using the packet_delimiter.
                 packets = self._split_bytes_into_packets(
@@ -70,7 +77,7 @@ class Packets:
                 #    re-insert into the cleaned_byte_stream.
                 (
                     packets_complete,
-                    self._cleaned_byte_stream,
+                    self._byte_stream,
                 ) = self._capture_incomplete_packets_t0(
                     packets_split,
                     packets,
@@ -85,7 +92,7 @@ class Packets:
                     len(self._config["packet_format"]["data_delimiters"]) + 1,
                 )
 
-                self._packets = packets_valid
+                self._packets += packets_valid
                 return
             elif packet_type == 1:
                 # 1. Split the bytearray into packets using the packet_delimiter.
@@ -111,7 +118,7 @@ class Packets:
                 #    re-insert into the cleaned_byte_stream.
                 (
                     packets_complete,
-                    self._cleaned_byte_stream,
+                    self._byte_stream,
                 ) = self._capture_incomplete_packets_t1(
                     packets_ordered,
                     packets,
@@ -126,7 +133,7 @@ class Packets:
                     len(self._config["packet_format"]["data_delimiters"]) + 1,
                 )
 
-                self._packets = packets_valid
+                self._packets += packets_valid
                 return
             elif packet_type == 2:
                 # TODO: Type 2 parsing using bytearray.
@@ -144,15 +151,15 @@ class Packets:
                 return
 
         # Default case. Just capture the entire thing as a string.
-        self._cleaned_byte_stream = bytearray()
-        self._packets = [
+        self._packets.append(
             {
                 "text": self._byte_stream.decode("utf-8"),
                 "series": "all",
-                "name": "text",
-                "data": 0,
+                "x_val": self._packet_ID,
+                "y_val": 0,
             }
-        ]
+        )
+        self._byte_stream = bytearray()
 
     def _split_bytes_into_packets(self, byte_stream, delims):
         """
@@ -360,8 +367,8 @@ class Packets:
         [{
             "text": Str,
             "series": Str,
-            "name": Str,
-            "data": Any
+            "x_val": Int,
+            "y_val": Any
         }, ...]
             A list of packet metadata for retrieval.
         """
@@ -373,10 +380,11 @@ class Packets:
                         {
                             "text": packet[0] + ": " + packet[1],
                             "series": packet[0],
-                            "name": "",  # TODO: pass in time of byte arrival.
-                            "data": packet[1],
+                            "x_val": self._packet_ID,
+                            "y_val": packet[1],
                         }
                     )
+                    self._packet_ID += 1
         return valid_packets
 
     def _capture_incomplete_packets_t1(
@@ -436,8 +444,8 @@ class Packets:
         [{
             "text": Str,
             "series": Str,
-            "name": Str,
-            "data": Any
+            "x_val": Int,
+            "y_val": Any
         }, ...]
             A list of packet metadata for retrieval.
         """
@@ -459,10 +467,11 @@ class Packets:
                         {
                             "text": packet_id[1] + ": " + packet_data[1],
                             "series": packet_id[1],
-                            "name": "",  # TODO: pass in time of byte arrival.
-                            "data": packet_data[1],
+                            "x_val": self._packet_ID,
+                            "y_val": packet_data[1],
                         }
                     )
+                    self._packet_ID += 1
         return valid_packets
 
     def get_packets(self):
@@ -474,26 +483,6 @@ class Packets:
         [Dict]
             List of Packet dictionaries. Format defined in the class definition.
         """
-        return self._packets
-
-    def get_full_bytestream(self):
-        """
-        Returns the input bytestream.
-
-        Returns
-        -------
-        ByteArray
-            Input ByteArray at generation.
-        """
-        return self._byte_stream
-
-    def get_cleaned_bytestream(self):
-        """
-        Returns the input bytestream sans the bytes used for the packets.
-
-        Returns
-        -------
-        ByteArray
-            Remaining ByteArray after extracting n packets from it.
-        """
-        return self._cleaned_byte_stream
+        packets = self._packets
+        self._packets = []
+        return packets

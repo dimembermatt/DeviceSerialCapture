@@ -1,27 +1,24 @@
 """
 File: graph.py
 
-Author: Matthew Yu, Array Lead (2020).
+Author: Matthew Yu, (2021).
 Contact: matthewjkyu@gmail.com
 Created: 11/17/20
-Last Modified: 11/24/20
+Last Modified: 05/21/21
 
 Description: The Graph class is a customizable widget allowing for
 displaying series data over an independent axis, like time. Axes properties,
 labels, and number of elements displayed at one time is defined at declaration.
 """
 # Library Imports.
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QGridLayout, QLabel, QVBoxLayout, QWidget
-from pyqtgraph import PlotWidget, plot
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from pyqtgraph import plot
 import pyqtgraph as pg
-
-import numpy as np
 
 # Custom Imports.
 from src.view import View
 
-
+# Class Implementation.
 class Graph(View):
     """
     The Graph class is a customizable widget allowing for displaying series data
@@ -99,7 +96,7 @@ class Graph(View):
         yAxisLabel: String
             Label for the Y Axis.
         """
-        super(Graph, self).__init__(data_controller={})
+        super(Graph, self).__init__()
 
         self._series = series
 

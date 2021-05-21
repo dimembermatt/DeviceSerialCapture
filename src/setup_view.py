@@ -4,31 +4,21 @@ setup_view.py
 Author: Matthew Yu (2021).
 Contact: matthewjkyu@gmail.com
 Created: 04/29/21
-Last Modified: 04/29/21
+Last Modified: 05/21/21
 
-Description: Implements the SetupView class, which inherits View class.
+Description: Implements the SetupView class, which inherits DisplayView class.
 """
 # Library Imports.
 import json
-from PyQt5.QtCore import Qt, QDir, QTimer
-from PyQt5.QtGui import QColor, QPalette
-from PyQt5.QtWidgets import (
-    QFileDialog,
-    QGridLayout,
-    QLabel,
-    QPushButton,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
-import serial.tools.list_ports
+from PyQt5.QtCore import Qt, QDir
+from PyQt5.QtWidgets import QFileDialog
 
 # Custom Imports.
-from src.view import View
+from src.display_view import DisplayView
 from src.misc import capture_port_names
 
-
-class SetupView(View):
+# Class Implementation.
+class SetupView(DisplayView):
     """
     The SetupView class manages setup and connection with an open serial port to
     a serial device.
@@ -41,27 +31,27 @@ class SetupView(View):
     SYNC_BITS = ["ONE", "TWO"]
     PARITY_BITS = ["None", "Odd", "Even"]
 
-    def __init__(self, data_controller, framerate):
+    def __init__(self, controller, framerate):
         """
         Upon initialization, we perform any data and UI setup required to get
         the SetupView into a default state.
 
         Parameters
         ----------
-        data_controller : Dict
-            Reference to the data controller.
+        controller : Dict
+            Reference to the controller.
         framerate : int
             Framerate of the program (or rather, execution rate).
         """
-        super(SetupView, self).__init__(
-            data_controller=data_controller, framerate=framerate
-        )
+        super(SetupView, self).__init__(controller=controller, framerate=framerate)
 
-        self._serial_datastream = data_controller["serial_datastream"]
+        self._serial_datastream = self._controller.get_data_pointer("serial_datastream")
 
         # Set Status to DISCONNECTED.
         self._widget_pointers["lbl_status"].setAutoFillBackground(True)
-        self._widget_pointers["lbl_status"].setText(self._data_controller["status"])
+        self._widget_pointers["lbl_status"].setText(
+            self._controller.get_data_pointer("status")
+        )
 
         # Set labels to default values.
         self._widget_pointers["cb_baud"].addItems([str(x) for x in SetupView.BAUD_RATE])
@@ -69,7 +59,7 @@ class SetupView(View):
         self._widget_pointers["cb_endian"].addItems(SetupView.ENDIAN)
         self._widget_pointers["cb_paritybits"].addItems(SetupView.PARITY_BITS)
         self._widget_pointers["cb_portname"].addItems(
-            self._data_controller["port_names"]
+            self._controller.get_data_pointer("port_names")
         )
         self._widget_pointers["cb_syncbits"].addItems(SetupView.SYNC_BITS)
 
@@ -87,18 +77,21 @@ class SetupView(View):
         self.init_frame(self._update_console)
 
     def _update_console(self):
-        if self._data_controller["status"] == "DISCONNECTED":
+        self._update_ports()
+
+        status = self._controller.get_data_pointer("status")
+        if status == "DISCONNECTED":
             self._widget_pointers["bu_connect"].setText("Connect")
-        elif self._data_controller["status"] == "CONNECTED":
+        elif status == "CONNECTED":
             self._widget_pointers["bu_connect"].setText("Disconnect")
 
-    def update_ports(self):
+    def _update_ports(self):
         """
         Updates the list of active ports.
         """
         self._widget_pointers["cb_portname"].clear()
         self._widget_pointers["cb_portname"].addItems(
-            self._data_controller["port_names"]
+            self._controller.get_data_pointer("port_names")
         )
 
     def get_file_name(self):
@@ -168,9 +161,10 @@ class SetupView(View):
         """
         Connects or disconnects the application.
         """
-        if self._data_controller["status"] == "DISCONNECTED":
+        status = self._controller.get_data_pointer("status")
+        if status == "DISCONNECTED":
             self.connect()
-        elif self._data_controller["status"] == "CONNECTED":
+        elif status == "CONNECTED":
             self.disconnect()
 
     def connect(self):
@@ -189,12 +183,13 @@ class SetupView(View):
         ):
             # Successful validation. Update the _data_controller["config"] and call
             # the parent to startup a serial connection.
-            self._data_controller["config"]["port_name"] = str(port)
-            self._data_controller["config"]["baud_rate"] = int(baud_rate)
-            self._data_controller["config"]["data_bits"] = str(data_bits)
-            self._data_controller["config"]["endian"] = str(endianness)
-            self._data_controller["config"]["sync_bits"] = str(sync_bits)
-            self._data_controller["config"]["parity_bits"] = str(parity_bits)
+            config = self._controller.get_data_pointer("config")
+            config["port_name"] = str(port)
+            config["baud_rate"] = int(baud_rate)
+            config["data_bits"] = str(data_bits)
+            config["endian"] = str(endianness)
+            config["sync_bits"] = str(sync_bits)
+            config["parity_bits"] = str(parity_bits)
 
             # Set status box to "CONNECTING" and set to blue.
             self._widget_pointers["lbl_status"].setText("CONNECTING")
@@ -203,7 +198,7 @@ class SetupView(View):
             )
 
             # Activate a serial connection.
-            self._data_controller["app"]._start_serial_thread()
+            self._controller.start_serial_thread()
 
             # Check for status == READY by the serialWorker in serial_datastream.
             ready = False
@@ -212,7 +207,7 @@ class SetupView(View):
             _status_lock = self._serial_datastream["status_lock"]
             while not ready:
                 print("Looping..")
-                while not _status_lock.tryLock(View.SECOND / self._framerate):
+                while not _status_lock.tryLock(SetupView.SECOND / self._framerate):
                     timeout += 1
 
                 _status_buffer = self._serial_datastream["status"]
@@ -222,15 +217,15 @@ class SetupView(View):
                 _status_lock.unlock()
 
                 # If we haven't connected after 5 seconds, time out.
-                if timeout >= View.SECOND * 5 / self._framerate:
+                if timeout >= SetupView.SECOND * 5 / self._framerate:
                     print("timeout!")
                     self.disconnect()
                     self.raise_error("TIMEOUT")
                     return
 
             # Upon success, set status to connected.
-            self._data_controller["status"] = "CONNECTED"
-            self.raise_status(self._data_controller["status"], "rgba(0, 255, 0, 255)")
+            self._controller.set_data_pointer("status", "CONNECTED")
+            self.raise_status("CONNECTED", "rgba(0, 255, 0, 255)")
 
     def _validate_config(
         self, port, baud_rate, data_bits, endianness, parity_bits, sync_bits
@@ -303,5 +298,5 @@ class SetupView(View):
         self._data_controller["app"]._stop_serial_thread()
 
         # Upon success, set status to disconnected.
-        self._data_controller["status"] = "DISCONNECTED"
-        self.raise_status(self._data_controller["status"], "rgba(122, 122, 255, 255)")
+        self._controller.set_data_pointer("status", "DISCONNECTED")
+        self.raise_status("DISCONNECTED", "rgba(122, 122, 255, 255)")

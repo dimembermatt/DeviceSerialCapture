@@ -11,7 +11,7 @@
         "graph_definitions": {
             "output": {
                 "title": "Temperature data over time.",
-                "x_axis": "Time (ms)",
+                "x_axis": "Packet idx (1 ms)",
                 "y_axis": "Temperature (C)"
             }
         }
