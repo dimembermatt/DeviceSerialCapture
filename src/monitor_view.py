@@ -62,9 +62,7 @@ class MonitorView(View):
         framerate : int
             Framerate of the program (or rather, execution rate).
         """
-        super(MonitorView, self).__init__(
-            data_controller=data_controller, framerate=framerate
-        )
+        super(MonitorView, self).__init__(data_controller=data_controller, framerate=30)
 
         self._serial_datastream = data_controller["serial_datastream"]
 

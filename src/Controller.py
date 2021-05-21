@@ -45,7 +45,7 @@ class Controller:
 
     def __init__(self):
         # Framerate of the program (or rather, execution rate).
-        self._framerate = 30
+        self._framerate = 15
 
         # Data controller storage.
         self._data_controller = {
