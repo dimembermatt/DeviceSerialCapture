@@ -295,7 +295,7 @@ class SetupView(DisplayView):
         Disconnects an existing serial line and updates the UI.
         """
         # Stop an existing serial communication.
-        self._data_controller["app"]._stop_serial_thread()
+        self._controller.stop_serial_thread()
 
         # Upon success, set status to disconnected.
         self._controller.set_data_pointer("status", "DISCONNECTED")

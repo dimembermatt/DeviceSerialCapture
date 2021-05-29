@@ -28,11 +28,24 @@ namely:
       complicated for the first time beginner. I recommend more experienced
       students or users to play with this.
 
-## Optional features
-- color code option for packets
+## Current Version
+
+The current version of this program is V0.1.0.
+
+## Planned features
+
+### V0.2.0
+
+- UI stability improvements.
+- Type 2, 3 packet format support.
+- Option for specifying a `packet_id` `x_id` parameter.
+- Option for scatter plot vs line graphs.
+- Option for coloring packet series.
+- Option for arbitrary function post processing.
+- Selector Menu for specifying a specific place to save output files.
 
 ## Current known bugs
-- Freeze up on packet selection
+- None at the moment.
 
 ---
 ## Device Configuration File Formats
@@ -125,7 +138,9 @@ space and are typically faster to process, so you can send more of these at once
         "packet_ids": [str],        // MANDATORY
 
         "graph_definitions": {      // OPTIONAL
-            "id": {
+            "name": {
+                "x_id": str,        // OPTIONAL
+                "y_id": str,        // MANDATORY
                 "title": str,       // OPTIONAL
                 "x_axis": str,      // OPTIONAL
                 "y_axis": str       // OPTIONAL
@@ -141,9 +156,16 @@ space and are typically faster to process, so you can send more of these at once
 
 Packet graphs offer a real time display of the packets entering the system.
 These are defined in key-value pair `"graph_definitions"`, and are optional.
-Each entry in the dictionary must correspond to the entries in the
-`"packet_ids"` list; whenever a packet with a matching ID is found, the
-corresponding graph, if any, is updated. 
+Each entry in the `graph_definition` must a defined `y_id`; this corresponds to
+a matching item in the `packet_id` list. Whenever a packet with a matching ID is
+found, the corresponding graph, if any, is updated. 
+
+Support for using a secondary `packet_id` entry as the `x_axis` variable is
+provided; by default, the `x_id` will be the counter of the specific `y_id`
+packet collected. If defined, the `y_id` will be associated with the latest
+`x_id` found. This may have unintended consequences if the `x_id` occurs
+irregularly, or if the `y_id` occurs before the paired `x_id`. The default
+behavior of having no prior `x_id` is to put the `y_id` value at X = 0.
 
 ---
 

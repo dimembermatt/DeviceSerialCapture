@@ -300,15 +300,12 @@ class MonitorView(DisplayView):
             "graph_definitions" in subconfig
             and type(subconfig["graph_definitions"]) is dict
         ):
+            # Clear prior graphs from the monitor view.
+            self._widget_pointers["tab_packet_visualizer"].clear()
+            
             # Check each entry in graph_definitions.
             for entry in subconfig["packet_ids"]:
-                if entry not in subconfig["graph_definitions"]:
-                    subconfig["graph_definitions"][entry] = {
-                        "title": "Unconfigured",
-                        "x_axis": "Unconfigured",
-                        "y_axis": "Unconfigured",
-                    }
-                else:
+                if entry in subconfig["graph_definitions"]:
                     graph_config = subconfig["graph_definitions"][entry]
                     if (
                         "title" not in graph_config
@@ -326,9 +323,7 @@ class MonitorView(DisplayView):
                     ):
                         graph_config["y_axis"] = "Unconfigured"
 
-                # Add graph to the monitor view.
-                self._widget_pointers["tab_packet_visualizer"].clear()
-                self._add_graph(subconfig["graph_definitions"][entry], entry)
+                    self._add_graph(subconfig["graph_definitions"][entry], entry)
 
         # Passing all mandatory checks, update the packet_config dict with the
         # newest config.
