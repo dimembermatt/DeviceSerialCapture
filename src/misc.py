@@ -22,4 +22,4 @@ def capture_port_names():
     [str]
         List of ports currently active.
     """
-    return [port for port, desc, hwid in sorted(serial.tools.list_ports.comports())]
+    return [port for port, _desc, _hwid in sorted(serial.tools.list_ports.comports())]

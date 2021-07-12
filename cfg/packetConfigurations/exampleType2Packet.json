@@ -10,8 +10,14 @@
         "graph_definitions": {
             "0x432": {
                 "title": "Temperature data over time.",
-                "x_axis": "Time (ms)",
-                "y_axis": "Temperature (C)"
+                "x": {
+                    "use_time": true,
+                    "x_axis": "Time (ms)"
+                },
+                "y": {
+                    "packet_id": "0x432",
+                    "y_axis": "Temperature (C)"
+                }
             }
         }
     }

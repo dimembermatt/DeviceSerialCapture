@@ -19,7 +19,7 @@ import re
 class PacketParser:
     """
     The PacketParser class generates a set of packets given a serial stream.
-    A packet is of theformat:
+    A packet is of the format:
     {
         "text": str,    # Plaintext equivalent of the packet.
         "series": str,  # Series the packet belongs to, defined by a config.

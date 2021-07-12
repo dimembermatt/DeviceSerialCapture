@@ -30,9 +30,9 @@ namely:
 
 ## Current Version
 
-The current version of this program is V0.1.0.
+The current version of this program is V0.2.0.
 
-## Planned features
+## Planned Features
 
 ### V0.2.0
 
@@ -44,7 +44,7 @@ The current version of this program is V0.1.0.
 - Option for arbitrary function post processing.
 - Selector Menu for specifying a specific place to save output files.
 
-## Current known bugs
+## Current Known Bugs
 - None at the moment.
 
 ---
@@ -114,38 +114,45 @@ space and are typically faster to process, so you can send more of these at once
 ### Format
 ```json
 {
-    "packet_title": str,            // MANDATORY
-    "packet_description": str,      // OPTIONAL
-    "example_line": str,            // OPTIONAL
-    "packet_format": {              // MANDATORY
-        "type": int,                // MANDATORY
+    "packet_title": str,                // MANDATORY
+    "packet_description": str,          // OPTIONAL
+    "example_line": str,                // OPTIONAL
+    "packet_format": {                  // MANDATORY
+        "type": int,                    // MANDATORY
 
         // type 0
-        "packet_delimiters": [str], // MANDATORY
-        "packet_ids": [str],        // MANDATORY
-        "data_delimiters": [str],   // OPTIONAL
-        "ignore": [str],            // OPTIONAL
+        "packet_delimiters": [str],     // MANDATORY
+        "packet_ids": [str],            // MANDATORY
+        "data_delimiters": [str],       // OPTIONAL
+        "ignore": [str],                // OPTIONAL
         
         // type 1
-        "packet_delimiters": [str], // MANDATORY
-        "packet_ids": [str],        // MANDATORY
-        "specifiers": [str],        // MANDATORY
-        "data_delimiters": [str],   // OPTIONAL
+        "packet_delimiters": [str],     // MANDATORY
+        "packet_ids": [str],            // MANDATORY
+        "specifiers": [str],            // MANDATORY
+        "data_delimiters": [str],       // OPTIONAL
 
         // type 2, 3
-        "header_order": [str],      // MANDATORY
-        "header_len": [int],        // MANDATORY
-        "packet_ids": [str],        // MANDATORY
+        "header_order": [str],          // MANDATORY
+        "header_len": [int],            // MANDATORY
+        "packet_ids": [str],            // MANDATORY
 
-        "graph_definitions": {      // OPTIONAL
+        "graph_definitions": {          // OPTIONAL
             "name": {
-                "x_id": str,        // OPTIONAL
-                "y_id": str,        // MANDATORY
-                "title": str,       // OPTIONAL
-                "x_axis": str,      // OPTIONAL
-                "y_axis": str       // OPTIONAL
-            }
-        }
+                "x": {                  // OPTIONAL
+                    "use_time": bool,   // OPTIONAL
+                    "packet_id": str,   // OPTIONAL
+                    "x_axis": str,      // OPTIONAL
+                },
+                "y": {                  // MANDATORY
+                    "packet_id": str,   // MANDATORY
+                    "y_axis": str,      // OPTIONAL
+                },
+                "title": str,           // OPTIONAL
+            }, ...
+        },
+
+        "filter_function": str      // OPTIONAL
     }
 }
 ```
@@ -156,16 +163,32 @@ space and are typically faster to process, so you can send more of these at once
 
 Packet graphs offer a real time display of the packets entering the system.
 These are defined in key-value pair `"graph_definitions"`, and are optional.
-Each entry in the `graph_definition` must a defined `y_id`; this corresponds to
+Each `graph_definition` entry must a defined `y:packet_id`; this corresponds to
 a matching item in the `packet_id` list. Whenever a packet with a matching ID is
-found, the corresponding graph, if any, is updated. 
+found, the corresponding graph, if any, is updated.
 
-Support for using a secondary `packet_id` entry as the `x_axis` variable is
-provided; by default, the `x_id` will be the counter of the specific `y_id`
-packet collected. If defined, the `y_id` will be associated with the latest
-`x_id` found. This may have unintended consequences if the `x_id` occurs
-irregularly, or if the `y_id` occurs before the paired `x_id`. The default
-behavior of having no prior `x_id` is to put the `y_id` value at X = 0.
+The `x:packet_id` can also be populated. By default, this is the packet
+ordering, but if specified it should be a matching item in the `packet_id` list.
+The `x:packet_id` sourced whenever a `y:packet_id` is found will be the most
+recently received `packet_id`.
+
+When the `x:packet_id` is not specified, the program falls back on the
+`x:use_time` parameter. If specified and is `true`, then the x index of the
+system will be represented in ms passed since the connection was established. If
+not specified, or is specified and is `False`, the x index will be the index of
+the packet received.
+
+The title and axis labels can also be populated; by default they are labeled
+`undefined`.
+
+---
+
+### Filter Function
+
+A filter function can be defined by the user and inserted into the processing
+scheme. It must follow the given API: 
+
+TODO: this
 
 ---
 
@@ -213,9 +236,14 @@ speed. Our configuration format will be as follows:
         "ignore": [" rpm"],
         "graph_definitions": {
             "motor speed": {
-                "title": "Motor speed over time.",
-                "x_axis": "Time (ms)",
-                "y_axis": "RPM"
+                "title": "Motor speed.",
+                "x": {
+                    "x_axis": "Event"
+                },
+                "y": {
+                    "packet_id": "motor speed",
+                    "y_axis": "RPM"
+                }
             }
         }
     }
@@ -286,8 +314,14 @@ would be as follows:
         "graph_definitions": {
             "temp": {
                 "title": "Temperature over time.",
-                "x_axis": "Time (ms)",
-                "y_axis": "Temp (C)"
+                "x": {
+                    "use_time": true,
+                    "x_axis": "Time (ms)"
+                },
+                "y": {
+                    "packet_id": "temp",
+                    "y_axis": "Temp (C)"
+                }
             }
         }
     }
@@ -368,8 +402,14 @@ Anyways, the configuration would look like this:
         "graph_definitions": {
             "0x432": {
                 "title": "Miles driven over time.",
-                "x_axis": "Time (s)",
-                "y_axis": "Miles Driven"
+                "x": {
+                    "use_time": true,
+                    "x_axis": "Time (s)"
+                },
+                "y": {
+                    "packet_id": "0x432",
+                    "y_axis": "Miles Driven"
+                }
             }
         }
     }
@@ -390,7 +430,6 @@ length. You can't match packets of different data lengths.
 
 Finally, __Type 3__ format is an extreme version of __Type 2__ format; instead
 of bytes you can specify the specific bits across a stream of bits to represent
-your ID and DATA.
-
-It's essentially the same as __Type 2__, except the `header_len` entries
-represent bits, not bytes.
+your ID and DATA. The data is MSb padded, which means that if the total header
+length is not an integer byte (8) multiple, then extra bits should be added to
+the front.
