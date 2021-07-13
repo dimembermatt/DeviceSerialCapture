@@ -5,15 +5,24 @@
     "packet_format": {
         "type": 0,
         "packet_delimiters": ["\n", "\t"],
-        "packet_ids": ["output"],
+        "packet_ids": ["output", "sensor"],
         "data_delimiters": ["="],
         "ignore": ["\r", " "],
         "graph_definitions": {
             "output": {
-                "title": "Temperature data over time.",
+                "title": "Output data over time.",
                 "x": {
-                    "use_time": true,
-                    "x_axis": "Packet idx (1 ms)"
+                    "use_time": true
+                },
+                "y": {
+                    "packet_id": "output",
+                    "y_axis": "Temperature (C)"
+                }
+            },
+            "sensor": {
+                "title": "Sensor data over time.",
+                "x": {
+                    "use_time": true
                 },
                 "y": {
                     "packet_id": "output",

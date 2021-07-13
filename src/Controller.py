@@ -16,7 +16,7 @@ import serial.tools.list_ports
 
 # Custom Imports.
 from src.misc import capture_port_names
-from src.packet_manager import PacketManager
+from src.packet import PacketManager
 
 # Class Implementation.
 class Controller:
@@ -223,7 +223,7 @@ class Controller:
                     while not _read_lock.tryLock(50):
                         pass
                     if response != b"":
-                        # print("Read({}): {}".format(id, response.decode("utf-8")))
+                        print("Read({}): {}".format(id, response.decode("utf-8")))
                         _read_buffer.append(response)
                     _read_lock.unlock()
 
@@ -233,12 +233,13 @@ class Controller:
                         # To reduce lock time, capture first read in write array only.
                         write_set_len = len(_write_buffer)
                         write_set = _write_buffer[0:write_set_len]
-                        # print("Write({}): {}".format(id, str(write_set)))
+                        print("Write({}): {}".format(id, str(write_set)))
                         try:
                             for entry in write_set:
+                                print(entry)
                                 self._serial_connection.write(entry)
                         except Exception as e:
-                            _update_status("Serial Write: " + str(e))
+                            self._update_status("Serial Write: " + str(e))
 
                         # Clear out what we have read.
                         while not _write_lock.tryLock(50):

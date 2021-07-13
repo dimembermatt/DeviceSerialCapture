@@ -10,15 +10,17 @@ Description: Implements the MonitorView class, which inherits DisplayView class.
 """
 # Library Imports.
 import json
+from time import sleep
 from PyQt5.QtCore import QDir
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import QFileDialog
+import random
+from typing import Any, TypeVar, Union, List, Tuple
 
 # Custom Imports.
 from src.display_view import DisplayView
 from src.graph import Graph
-from src.packet_manager import PacketManager
-from src.packet_parser import PacketParser
+from src.packet import PacketParser, Packet
 
 # Class Implementation.
 class MonitorView(DisplayView):
@@ -57,6 +59,13 @@ class MonitorView(DisplayView):
 
         self._serial_datastream = self._controller.get_data_pointer("serial_datastream")
 
+        # The packets collected.
+        self._packet_parser = PacketParser(None)
+        self._packet_man = self._controller.get_data_pointer("packet_manager")
+
+        # Dict referring to graphs in the monitor view.
+        self.graphs = {}
+
         # Setup transmission textbox and send button.
         self._widget_pointers["le_transmit_txt"].returnPressed.connect(
             self._send_packet
@@ -64,19 +73,12 @@ class MonitorView(DisplayView):
         self._widget_pointers["bu_send"].clicked.connect(self._send_packet)
 
         # Setup save button.
-        self._widget_pointers["bu_save"].clicked.connect(self._save_packets)
+        self._widget_pointers["bu_save"].clicked.connect(self._packet_man.save_all)
 
         # Setup packet file configuration.
         self._widget_pointers["bu_packet_config_filesearch"].clicked.connect(
             self._get_file_name
         )
-
-        # The packets collected.
-        self._packet_parser = PacketParser(None)
-        self._packet_man = self._controller.get_data_pointer("packet_manager")
-
-        # Dict referring to graphs in the monitor view.
-        self.graphs = {}
 
         self.init_frame(self._update_console)
 
@@ -85,26 +87,32 @@ class MonitorView(DisplayView):
         Performs any required actions at FPS.
         """
         # Capture read data from serial_datastream, if available.
-        bytes_to_parse = b""
+        # bytes_to_parse = b""
+        i = random.randint(0, 10)
+        bytes_to_parse = b'sensor = ' + f'{i}'.encode('utf-8') + b'\toutput = ' + f'{i*2}'.encode('utf-8') + b'\n'
         while not self._serial_datastream["read_lock"].tryLock(50):
             pass
-        for byte in self._serial_datastream["read"]:
-            bytes_to_parse += bytearray(byte)
+        # for byte in self._serial_datastream["read"]:
+            # bytes_to_parse += bytearray(byte)
         self._serial_datastream["read"].clear()
         self._serial_datastream["read_lock"].unlock()
 
         if len(bytes_to_parse) > 0:
             # Parse any packets if we can.
-            packets_parsed = self._parse_packet(bytes_to_parse)
+            print("\nParsing: ", bytes_to_parse)
+            self._packet_parser.append_bytestream(bytes_to_parse)
+            packets = self._packet_parser.process_packets()
 
             # Update the active graphs and the text edit based on packets in
             # the packet_man.
-            for packet in packets_parsed:
+            for packet in packets:
+                self._packet_man.insert_packet(packet)
                 # Update active graphs.
+                print("Apply data to graph.")
                 self._apply_data_to_graph(packet)
 
                 # Update the text edit.
-                self._widget_pointers["te_serial_output"].append(packet["text"])
+                self._widget_pointers["te_serial_output"].append(packet.plaintext)
 
             self._widget_pointers["te_serial_output"].moveCursor(QTextCursor.End)
 
@@ -133,24 +141,24 @@ class MonitorView(DisplayView):
         if errors:
             # Raise the first error.
             self.raise_error(errors[0])
+        
+        sleep(0.3)
 
     # Graph management.
-    def _add_graph(self, graph_params, graph_ID):
+    def _add_graph(self, graph_config: dict) -> None:
         """
         Adds an active graph to the UI tabview.
 
         Parameters
         ----------
-        graph_params : Dict
+        graph_config: Dict
             Parameters of the graph to define.
-        graph_ID : Str
-            Name of the graph.
         """
         # Construct the graph.
-        self.graphs[graph_ID] = Graph(
-            title=graph_params["title"],
-            xAxisLabel=graph_params["x_axis"],
-            yAxisLabel=graph_params["y_axis"],
+        self.graphs[graph_config["title"]] = Graph(
+            title=graph_config["title"],
+            xAxisLabel=graph_config["x_axis"],
+            yAxisLabel=graph_config["y_axis"],
             series={
                 "packetData": {
                     "data": {"x": [], "y": []},
@@ -162,9 +170,9 @@ class MonitorView(DisplayView):
         )
 
         # Add graph widget to the layout.
-        widget = self.graphs[graph_ID].get_layout()
+        widget = self.graphs[graph_config["title"]].get_layout()
         self._widget_pointers["tab_packet_visualizer"].addTab(
-            widget, graph_params["title"]
+            widget, graph_config["title"]
         )
 
     def _remove_graph(self):
@@ -180,13 +188,20 @@ class MonitorView(DisplayView):
 
         Parameters
         ----------
-        packet : Dict
+        packet : Packet
             Adds a packet to an active graph.
         """
-        if packet["series"] in self.graphs:
-            self.graphs[packet["series"]].addPoint(
-                "packetData", packet["x_val"], float(packet["y_val"])
-            )
+        try:
+            print("PACKET",packet)
+            print("SERIES",packet.packet_series)
+            print("ID",packet.packet_id)
+            print("DATA",packet.packet_value)
+            if packet.packet_series in self.graphs:
+                self.graphs[packet.packet_series].addPoint(
+                    "packetData", packet.packet_id, float(packet.packet_value)
+                )
+        except:
+            pass
 
     # Packet management.
     def _get_file_name(self):
@@ -300,37 +315,61 @@ class MonitorView(DisplayView):
             "graph_definitions" in subconfig
             and type(subconfig["graph_definitions"]) is dict
         ):
+            def is_valid(key: str, loc: dict, val_type) -> bool:
+                return (key in loc and type(loc[key]) is val_type)
+
             # Clear prior graphs from the monitor view.
             self._widget_pointers["tab_packet_visualizer"].clear()
-            
-            # Check each entry in graph_definitions.
-            for entry in subconfig["packet_ids"]:
-                if entry in subconfig["graph_definitions"]:
-                    graph_config = subconfig["graph_definitions"][entry]
-                    if (
-                        "title" not in graph_config
-                        or type(graph_config["title"]) is not str
-                    ):
-                        graph_config["title"] = "Unconfigured"
-                    if (
-                        "x_axis" not in graph_config
-                        or type(graph_config["x_axis"]) is not str
-                    ):
-                        graph_config["x_axis"] = "Packet Idx"
-                    if (
-                        "y_axis" not in graph_config
-                        or type(graph_config["y_axis"]) is not str
-                    ):
-                        graph_config["y_axis"] = "Unconfigured"
 
-                    self._add_graph(subconfig["graph_definitions"][entry], entry)
+            # Check each entry in graph_definitions.
+            for entry in subconfig["graph_definitions"]:
+                graph_definition = subconfig["graph_definitions"][entry]
+                graph_config = {
+                    "title": entry,
+                    "x_axis": "Packet Idx",
+                    "x_series": None,
+                    "y_axis": "Unconfigured",
+                    "y_series": None,
+                    "capture_mode": "IDX"
+                }
+
+                # X axis.
+                if is_valid("x", graph_definition, dict):
+                    x_config = graph_definition["x"]
+
+                    if is_valid("use_time", x_config, bool):
+                        if x_config["use_time"] is True:
+                            graph_config["x_axis"] = "Time (ns)"
+                            graph_config["capture_mode"] = "TIME"
+
+                    if is_valid("packet_id", x_config, str):
+                        if x_config["packet_id"] in subconfig["packet_ids"]:
+                            graph_config["x_axis"] = x_config["packet_id"]
+                            graph_config["capture_mode"] = "INLINE"
+
+                    if is_valid("x_axis", x_config, str):
+                        graph_config["x_axis"] = x_config["x_axis"]
+
+                # Y axis.
+                if is_valid("y", graph_definition, dict):
+                    y_config = graph_definition["y"]
+
+                    if is_valid("packet_id", y_config, str):
+                        if y_config["packet_id"] in subconfig["packet_ids"]:
+                            graph_config["y_series"] = y_config["packet_id"]
+
+                    if is_valid("y_axis", y_config, str):
+                        graph_config["y_axis"] = y_config["y_axis"]
+
+                self._add_graph(graph_config)
 
         # Passing all mandatory checks, update the packet_config dict with the
         # newest config.
         self._controller.set_data_pointer("packet_config", config)
 
         # Then update the packet manager.
-        self._packet_parser = PacketParser(config)
+        self._packet_parser.set_config(config)
+        print("Set config:", config)
 
     def _valid_packet_config_helper(self, config, type, key, error=None):
         """
@@ -361,41 +400,6 @@ class MonitorView(DisplayView):
                 self.raise_error("Invalid " + error + ".")
             return False
         return True
-
-    def _parse_packet(self, curr_bytes):
-        """
-        Take all current bytes to parse, pull, out the first relevant packet,
-        and insert into the packet manager.
-
-        Parameters
-        ----------
-        curr_bytes: ByteArray
-            Bytes that have yet to be parsed.
-
-        Returns
-        -------
-        [Dict]/None
-            A list of dicts representing parsed packets, or None if no packets
-            were able to be parsed.
-
-        Parsed packets have the following format:
-        - text: the plaintext value.
-        - series: the packet series the packet belongs to.
-        - x_val: the x value mapped to the data.
-        - y_val: the y value, or data of the packet.
-
-        By default, no packet configuration set results in only a default packet
-        being generated for returning the plaintext value of curr_bytes.
-        """
-        packets = None
-        if self._packet_parser:
-            self._packet_parser.parse(curr_bytes)
-            packets = self._packet_parser.get_packets()
-            for packet in packets:
-                self._packet_man.insert_packet(
-                    packet["series"], packet["x_val"], packet["y_val"]
-                )
-        return packets
 
     def _send_packet(self):
         """
@@ -432,10 +436,3 @@ class MonitorView(DisplayView):
 
         # Clear the line edit.
         self._widget_pointers["le_transmit_txt"].clear()
-
-    def _save_packets(self):
-        """
-        Saves all possible series in the packet_manager as csv files.
-        """
-        for series in self._packet_man.get_all_packet_series():
-            self._packet_man.save_packet_series(series)

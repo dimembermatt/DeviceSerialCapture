@@ -1,18 +1,40 @@
 # Device Serial Capture (DeSeCa)
 
-DeSeCa is a customizable application for capturing formatted serial packets
-from different devices and visualizing it. Users can load specific serial
+DeSeCa is a customizable application for capturing and visualizing formatted
+serial packets from embedded devices over USB. Users can load specific serial
 configurations and packet configurations and monitor traffic from their
-laptop over USB.
+laptop with only a few clicks.
 
-This was created from 04/29/21 to 05/01/21 to use in my personal applications,
-namely:
+This was created from over the last weekend of April 2021 for use in my personal
+applications, namely:
 - [IV Curve Tracer](https://github.com/lhr-solar/Array-CurveTracerPCB) packet
   capture
 - [RASWare](https://github.com/ut-ras/Rasware) student distance sensor
   visualization
-- Senior Design LoRa Network testing
-- And a couple others I can't divulge
+- Senior Design Project LoRa Network testing
+- And several others.
+
+- [Device Serial Capture (DeSeCa)](#device-serial-capture-deseca)
+  - [Resources](#resources)
+  - [Recommended Alternatives](#recommended-alternatives)
+  - [Current Version](#current-version)
+  - [Planned Features](#planned-features)
+    - [V0.2.0](#v020)
+  - [Current Known Bugs](#current-known-bugs)
+  - [Device Configuration File Formats](#device-configuration-file-formats)
+    - [Format](#format)
+    - [Examples](#examples)
+  - [Packet Configuration File Formats](#packet-configuration-file-formats)
+    - [Format](#format-1)
+    - [Packet Graphs](#packet-graphs)
+    - [Filter Function](#filter-function)
+    - [Type 0: "Human Readable Format"](#type-0-human-readable-format)
+      - [Example](#example)
+    - [Type 1: "Compressed CSV Format"](#type-1-compressed-csv-format)
+      - [Example](#example-1)
+    - [Type 2: "Encoded Chars Format"](#type-2-encoded-chars-format)
+      - [Example](#example-2)
+    - [Type 3: "Encoded Bits Format"](#type-3-encoded-bits-format)
 
 ## Resources
 
@@ -30,19 +52,19 @@ namely:
 
 ## Current Version
 
-The current version of this program is V0.2.0.
+The current version of this program is V0.2.0 (beta).
 
 ## Planned Features
 
 ### V0.2.0
 
-- UI stability improvements.
-- Type 2, 3 packet format support.
-- Option for specifying a `packet_id` `x_id` parameter.
-- Option for scatter plot vs line graphs.
-- Option for coloring packet series.
-- Option for arbitrary function post processing.
-- Selector Menu for specifying a specific place to save output files.
+- [ ] UI stability improvements.
+- [x] Type 2, 3 packet format support.
+- [x] Option for specifying a `packet_id` `x_id` parameter.
+- [ ] Option for scatter plot vs line graphs.
+- [ ] Option for coloring packet series.
+- [ ] Option for arbitrary function post processing.
+- [ ] Selector Menu for specifying a specific place to save output files.
 
 ## Current Known Bugs
 - None at the moment.
@@ -148,7 +170,6 @@ space and are typically faster to process, so you can send more of these at once
                     "packet_id": str,   // MANDATORY
                     "y_axis": str,      // OPTIONAL
                 },
-                "title": str,           // OPTIONAL
             }, ...
         },
 
@@ -167,19 +188,31 @@ Each `graph_definition` entry must a defined `y:packet_id`; this corresponds to
 a matching item in the `packet_id` list. Whenever a packet with a matching ID is
 found, the corresponding graph, if any, is updated.
 
-The `x:packet_id` can also be populated. By default, this is the packet
-ordering, but if specified it should be a matching item in the `packet_id` list.
-The `x:packet_id` sourced whenever a `y:packet_id` is found will be the most
-recently received `packet_id`.
+The packets on the Y axis can be ordered by several metrics, including a
+secondary packet representing the X axis index. This is specified in the `x:`
+field and can be one of three modes, ordered by precedence.
 
-When the `x:packet_id` is not specified, the program falls back on the
-`x:use_time` parameter. If specified and is `true`, then the x index of the
-system will be represented in ms passed since the connection was established. If
-not specified, or is specified and is `False`, the x index will be the index of
-the packet received.
+1. Packet Inline Mode. If the user sends a secondary packet (called the index
+   packet) containing numerical data alongside the data packet (this may even be
+   the data packet), the data packets will be ordered by the last received index
+   packet. The user must specify `x:packet_id` and the value must correspond to
+   a packet ID within `packet_ids`. The default X-axis label is `{x:packet_id}`.
+   It is recommended for the user to use `x:x_axis` to override this.
 
-The title and axis labels can also be populated; by default they are labeled
-`undefined`.
+2. Packet Time of Parse Mode. If the user specifies `x:use_time` and `use_time`
+   is `True`, then the program will order packets by the nearest nanosecond
+   that the packet finished processing. Sequential packets that are parsed at
+   the same time (unlikely, but possible), are incremented by 1 for each packet
+   parsed. The default X-axis label is "Time (ns)".
+
+3. Packet Index Mode. This is the default mode. The packets are ordered by an
+   integer index of parsing. Sequential packets are incremented in index. The
+   default X-axis label is "Packet Idx".
+
+If the user defines the `x:x_axis` key, the X-axis label will be overridden
+regardless of the actual ordering modes specified.
+
+By default, the title and axis labels display `undefined` unless specified.
 
 ---
 

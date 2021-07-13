@@ -4,7 +4,7 @@ packet.py
 Author: Matthew Yu (2021).
 Contact: matthewjkyu@gmail.com
 Created: 07/10/21
-Last Modified: 07/10/21
+Last Modified: 07/12/21
 """
 import csv
 import os.path
@@ -14,7 +14,7 @@ import time
 from abc import ABC
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar, Union, List, Tuple
 
 T = TypeVar("T", bound="Packet")
 
@@ -29,7 +29,9 @@ class Packet(ABC):
     packet_value: Any = ""
 
     @classmethod
-    def parse(bytestream: bytes, config: dict) -> (Union[list, str], bytes):
+    def parse(
+        cls, bytestream: bytes, _config: dict = None
+    ) -> Tuple[Union[List[T], str], bytes]:
         """
         Method called when a byte stream must be parsed into a packet.
 
@@ -54,11 +56,15 @@ class Packet(ABC):
         - the bytes that were not consumed from the bytestream on packet
           generation.
         """
-        return ("Calling parse() from the Packet class is disallowed.", bytestream)
+        packet = Packet(
+            bytestream.decode("utf-8"), "None", time.time_ns(), 0
+        )
+        return ([packet], b"")
 
+    @classmethod
     def _split_char_bytestream_into_packets(
-        bytestream: bytes, delims: [str]
-    ) -> ([str], bytes, bytes):
+        cls, bytestream: bytes, delims: List[str]
+    ) -> Tuple[List[str], bytes, bytes]:
         """
         Splits the bytearray into different packets using a set of
         delimiters.
@@ -87,7 +93,10 @@ class Packet(ABC):
         consumed = bytestream[: len(bytestream) - len(unconsumed)]
         return (packets[:-1], consumed, unconsumed)
 
-    def _split_packets_by_data_delims(packets: [str], delims: [str]) -> [[str, str]]:
+    @classmethod
+    def _split_packets_by_data_delims(
+        cls, packets: List[str], delims: List[str]
+    ) -> List[List[str]]:
         """
         Splits packet strings into substrings representing the id and value.
 
@@ -106,9 +115,10 @@ class Packet(ABC):
         delims_exp = "|".join(map(re.escape, delims))
         return [re.split(delims_exp, packet) + [packet] for packet in packets]
 
+    @classmethod
     def _split_byte_bytestream_into_packets(
-        bytestream: bytes, header_bytes: int
-    ) -> ([bytes], bytes, bytes):
+        cls, bytestream: bytes, header_bytes: int
+    ) -> Tuple[List[bytes], bytes, bytes]:
         """
         Splits the bytearray into different packets using the total number of
         header bits.
@@ -147,7 +157,8 @@ class T0_Packet(Packet):
     Output: packet_series: Str, packet_id: Time, packet_data: Str
     """
 
-    def parse(bytestream: bytes, config: dict) -> (Union[list, str], bytes):
+    @classmethod
+    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split the bytearray into packets using the packet_delimiter field
         #    in the config.
         (
@@ -160,7 +171,7 @@ class T0_Packet(Packet):
         # By now the packets should be in the format: [PLAINTEXT].
 
         # 2. Scrub all ignored strings from all packets.
-        packets = T0_Packet._scrub_packets(packets, config["ignore"])
+        packets = cls._scrub_packets(packets, config["ignore"])
         # By now the packets should be in the format: [PLAINTEXT].
 
         # 3. Attempt to split strings via data delimiters.
@@ -170,7 +181,7 @@ class T0_Packet(Packet):
         # By now the packets should be in the format: [[ID, DATA]].
 
         # 4. Throw out packets not explicitly defined in "packet_ids".
-        packets = T0_Packet._retain_valid_packets(packets, config["packet_ids"])
+        packets = cls._retain_valid_packets(packets, config["packet_ids"])
         # By now the packets should be in the format: [[ID, DATA]].
 
         # 5. Generate packets from strings.
@@ -179,7 +190,7 @@ class T0_Packet(Packet):
             Packet(
                 plaintext=packet[0] + ": " + packet[1],
                 packet_series=packet[0],
-                packet_id=(int)(round(time.time(), 3) * 10000) + idx,
+                packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
             )
             for idx, packet in enumerate(packets)
@@ -188,7 +199,8 @@ class T0_Packet(Packet):
 
         return (packets, remaining_bytes)
 
-    def _scrub_packets(packets: [str], ignore: [str]) -> [str]:
+    @classmethod
+    def _scrub_packets(cls, packets: List[str], ignore: List[str]) -> List[str]:
         """
         Scrubs a list of strings from a list of potential packets.
 
@@ -205,14 +217,17 @@ class T0_Packet(Packet):
             A list of packets with ignore strings scrubbed.
         """
 
-        def scrub(packet, ignore):
+        def scrub(packet: str, ignore: List[str]) -> str:
             for entry in ignore:
                 packet = packet.replace(entry, "")
             return packet
 
         return [scrub(packet, ignore) for packet in packets]
 
-    def _retain_valid_packets(packets: [[str, str]], ids: [str]) -> [[str, str]]:
+    @classmethod
+    def _retain_valid_packets(
+        cls, packets: List[List[str]], ids: List[str]
+    ) -> List[List[str]]:
         """
         Retain only packets with explicitly defined packet ids.
 
@@ -237,7 +252,8 @@ class T1_Packet(Packet):
     Output: packet_series: Str, packet_id: Time, packet_data: Str
     """
 
-    def parse(bytestream: bytes, config: dict) -> (Union[list, str], bytes):
+    @classmethod
+    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split the bytearray into packets using the packet_delimiter field
         #    in the config.
         (
@@ -256,7 +272,7 @@ class T1_Packet(Packet):
         # By now the packets should be in the format: [[NAME, VALUE, PLAINTEXT]].
 
         # 3. Order packets by specifiers and trim if necessary.
-        packets = T1_Packet._order_packets_by_specifiers(
+        packets = cls._order_packets_by_specifiers(
             # +1 for unsplit string, len+1 for substrings split by delimiters.
             packets,
             config["specifiers"],
@@ -266,7 +282,7 @@ class T1_Packet(Packet):
 
         # 4. Throw out packets not explicitly defined in "packet_ids" and
         #    invalid data packets.
-        (packets, unused_packet_bytes) = T1_Packet._retain_valid_packets(
+        (packets, unused_packet_bytes) = cls._retain_valid_packets(
             packets, config["packet_ids"]
         )
         # By now the packets should be in the format: [[ID, VALUE]].
@@ -277,7 +293,7 @@ class T1_Packet(Packet):
             Packet(
                 plaintext=packet[0] + ": " + packet[1],
                 packet_series=packet[0],
-                packet_id=(int)(round(time.time(), 3) * 10000) + idx,
+                packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
             )
             for idx, packet in enumerate(packets)
@@ -292,9 +308,10 @@ class T1_Packet(Packet):
         )
         return (packets, bytestream)
 
+    @classmethod
     def _order_packets_by_specifiers(
-        packets: [[str]], specifiers: [str], num_data_delims: int
-    ) -> [[str]]:
+        cls, packets: List[List[str]], specifiers: List[str], num_data_delims: int
+    ) -> List[List[str]]:
         """
         Sorts a list of split packets into subpackets using specifiers.
         It also checks packets for specifier value; packets must be in order of
@@ -329,7 +346,7 @@ class T1_Packet(Packet):
         #     don't check for this.)
         # Throw out the packet (or pair of packets) if one of these rules
         #   fail, save the packets state, and retry.
-        def bad_candidate(candidate, specifier):
+        def bad_candidate(candidate: str, specifier: str) -> bool:
             return (
                 len(candidate) != num_data_delims
                 or candidate[0] != specifier
@@ -380,9 +397,10 @@ class T1_Packet(Packet):
 
         return remaining_packets
 
+    @classmethod
     def _retain_valid_packets(
-        subpackets: [[str]], packet_ids: [str]
-    ) -> ([[str]], bytes):
+        cls, subpackets: List[List[str]], packet_ids: List[str]
+    ) -> Tuple[List[List[str]], bytes]:
         """
         Packages ID and DATA subpackets into packets, and filters out packets
         with ids not explicitly specified and data that is null.
@@ -420,7 +438,8 @@ class T2_Packet(Packet):
     Output: packet_series: Int, packet_id: Time, packet_data: Int
     """
 
-    def parse(bytestream: bytes, config: dict) -> (Union[list, str], bytes):
+    @classmethod
+    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split packets by header_len.
         (
             packets,
@@ -432,14 +451,14 @@ class T2_Packet(Packet):
         # By now the packets should be in the format: [bytes].
 
         # 2. Split by header order.
-        packets = T2_Packet._split_by_header_order(
+        packets = cls._split_by_header_order(
             packets, config["header_order"], config["header_len"]
         )
         # By now the packets should be in the format: [[ID(Int), DATA(Int)]].
 
         # 3. Throw out packets not explicitly defined in "packet_ids" and
         #    invalid data packets.
-        packets = T2_Packet._retain_valid_packets(packets, config["packet_ids"])
+        packets = cls._retain_valid_packets(packets, config["packet_ids"])
         # By now the packets should be in the format: [[ID(Int), DATA(Int)]].
 
         # 4. Generate packets from strings.
@@ -448,7 +467,7 @@ class T2_Packet(Packet):
             Packet(
                 plaintext=str(packet[0]) + ": " + str(packet[1]),
                 packet_series=packet[0],
-                packet_id=(int)((round(time.time(), 3) * 10000) + idx),
+                packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
             )
             for idx, packet in enumerate(packets)
@@ -457,9 +476,10 @@ class T2_Packet(Packet):
 
         return (packets, remaining_bytes)
 
+    @classmethod
     def _split_by_header_order(
-        packets: [str], header_order: [str], header_len: [[bytes]]
-    ) -> [[int]]:
+        cls, packets: List[str], header_order: List[str], header_len: List[List[bytes]]
+    ) -> List[List[int]]:
         """
         Splits the packet strings by their headers and maps them together.
 
@@ -478,7 +498,9 @@ class T2_Packet(Packet):
             A list of packets in order of header order.
         """
 
-        def arrange_packets(packet: str, header_order: [str], header_len: [int]) -> {}:
+        def arrange_packets(
+            packet: str, header_order: List[str], header_len: List[int]
+        ) -> List[int]:
             list_idx = 0
             result = []
             for header, hlen in zip(header_order, header_len):
@@ -488,7 +510,10 @@ class T2_Packet(Packet):
 
         return [arrange_packets(packet, header_order, header_len) for packet in packets]
 
-    def _retain_valid_packets(packets: [[int]], packet_ids: [str]) -> [[int]]:
+    @classmethod
+    def _retain_valid_packets(
+        cls, packets: List[List[int]], packet_ids: List[str]
+    ) -> List[List[int]]:
         """
         Retains and agglomerates valid packets.
 
@@ -514,7 +539,8 @@ class T2_Packet(Packet):
 class T3_Packet(Packet):
     """packet_series: Int, packet_id: Time, packet_data: Int"""
 
-    def parse(bytestream: bytes, config: dict) -> (Union[list, str], bytes):
+    @classmethod
+    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split packets by header_len.
         def round_bits(x):
             return (int)(((x + 7) & -8) / 8)
@@ -529,14 +555,14 @@ class T3_Packet(Packet):
         # By now the packets should be in the format: [bytes].
 
         # 2. Split by header order.
-        packets = T3_Packet._split_by_header_order(
+        packets = cls._split_by_header_order(
             packets, config["header_order"], config["header_len"]
         )
         # By now the packets should be in the format: [[ID(Byte), DATA(Int)]].
 
         # 3. Throw out packets not explicitly defined in "packet_ids" and
         #    invalid data packets.
-        packets = T3_Packet._retain_valid_packets(packets, config["packet_ids"])
+        packets = cls._retain_valid_packets(packets, config["packet_ids"])
         # By now the packets should be in the format: [[ID(Int), DATA(Int)]].
 
         # 4. Generate packets from strings.
@@ -545,7 +571,7 @@ class T3_Packet(Packet):
             Packet(
                 plaintext=str(packet[0]) + ": " + str(packet[1]),
                 packet_series=packet[0],
-                packet_id=(int)((round(time.time(), 3) * 10000) + idx),
+                packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
             )
             for idx, packet in enumerate(packets)
@@ -554,9 +580,10 @@ class T3_Packet(Packet):
 
         return (packets, remaining_bytes)
 
+    @classmethod
     def _split_by_header_order(
-        packets: [str], header_order: [str], header_len: [str]
-    ) -> [[int]]:
+        cls, packets: List[str], header_order: List[str], header_len: List[str]
+    ) -> List[List[int]]:
         """
         Splits the packet strings by their headers and maps them together.
 
@@ -574,10 +601,8 @@ class T3_Packet(Packet):
         [{str: str}, ...]
             A list of packet dicts split and mapped by headers.
         """
-        def get_next_multiple_of_four(n: int) -> int:
-            return (int)((n + 3) / 4)
 
-        def bits_to_value(bin_packet: int, bits_len: int) -> (str, str):
+        def bits_to_value(bin_packet: int, bits_len: int) -> Tuple[str, str]:
             # sub 2 to remove '0b' from string.
             mask = (1 << bits_len) - 1
             captured_bits = bin_packet & mask
@@ -585,8 +610,8 @@ class T3_Packet(Packet):
             return (captured_bits, remaining_bits)
 
         def arrange_packets(
-            packet: str, header_order: [str], header_len: [int]
-        ) -> [int]:
+            packet: str, header_order: List[str], header_len: List[int]
+        ) -> List[int]:
             packet = int.from_bytes(packet, "big")
             list_idx = 0
             result = []
@@ -598,7 +623,10 @@ class T3_Packet(Packet):
 
         return [arrange_packets(packet, header_order, header_len) for packet in packets]
 
-    def _retain_valid_packets(packets: [[int]], packet_ids: [str]) -> [[int]]:
+    @classmethod
+    def _retain_valid_packets(
+        cls, packets: List[List[int]], packet_ids: List[str]
+    ) -> List[List[int]]:
         """
         Retains and agglomerates valid packets.
 
@@ -645,14 +673,13 @@ class PacketManager:
 
     def remove_packet(self, packet_series: int, packet_id: int) -> None:
         """Deletes a matching packet if any from the packet manager."""
-        if packet_series in self._packets:
-            if packet_id in self._packets[packet_series]:
-                del self._packets[packet_series][packet_name]
+        if packet_series in self._packets and packet_id in self._packets[packet_series]:
+            del self._packets[packet_series][packet_id]
 
     def get_series(self, packet_series: int) -> OrderedDict:
         """Retrieve a reference to a packet series, organized by packet ID."""
-        if packet_Series in self._packets:
-            return self._packets[packets_series]
+        if packet_series in self._packets:
+            return self._packets[packet_series]
         return OrderedDict()
 
     def get_packet_series(self) -> list:
@@ -720,12 +747,14 @@ class PacketParser:
         """Adds a set of bytes to the internal bytestream for processing."""
         self._bytestream += bytestream
 
-    def process_packet(self) -> Union[list, str]:
+    def process_packets(self) -> List[Packet]:
         """Attempts to process a packet from the internal bytestream."""
-        if not self._config:
-            return "Parser is not configured."
         if not self._bytestream:
-            return "Bytestream is currently empty."
+            return []
+
+        if not self._config:
+            packets, self._bytestream = Packet.parse(self._bytestream)
+            return packets
 
         # TODO: It would be nice to bump the python version requirement to 3.10
         # and replace this with a match statement.
