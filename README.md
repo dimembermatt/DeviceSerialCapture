@@ -14,7 +14,10 @@ applications, namely:
 - Senior Design Project LoRa Network testing
 - And several others.
 
+---
+## Table of Contents
 - [Device Serial Capture (DeSeCa)](#device-serial-capture-deseca)
+  - [Table of Contents](#table-of-contents)
   - [Resources](#resources)
   - [Recommended Alternatives](#recommended-alternatives)
   - [Current Version](#current-version)
@@ -27,6 +30,8 @@ applications, namely:
   - [Packet Configuration File Formats](#packet-configuration-file-formats)
     - [Format](#format-1)
     - [Packet Graphs](#packet-graphs)
+      - [Labeling](#labeling)
+      - [Series Coloring](#series-coloring)
     - [Filter Function](#filter-function)
     - [Type 0: "Human Readable Format"](#type-0-human-readable-format)
       - [Example](#example)
@@ -36,12 +41,14 @@ applications, namely:
       - [Example](#example-2)
     - [Type 3: "Encoded Bits Format"](#type-3-encoded-bits-format)
 
+---
 ## Resources
 
 - https://programmer.group/python-uses-pyqt5-to-write-a-simple-serial-assistant.html
 - https://en.wikipedia.org/wiki/Serial_port
 - https://learn.sparkfun.com/tutorials/serial-communication/all
 
+---
 ## Recommended Alternatives
 
 - https://github.com/Serial-Studio/Serial-Studio:
@@ -50,10 +57,12 @@ applications, namely:
       complicated for the first time beginner. I recommend more experienced
       students or users to play with this.
 
+---
 ## Current Version
 
 The current version of this program is V0.2.0 (beta).
 
+---
 ## Planned Features
 
 ### V0.2.0
@@ -61,13 +70,17 @@ The current version of this program is V0.2.0 (beta).
 - [ ] UI stability improvements.
 - [x] Type 2, 3 packet format support.
 - [x] Option for specifying a `packet_id` `x_id` parameter.
-- [ ] Option for scatter plot vs line graphs.
-- [ ] Option for coloring packet series.
+- [x] Option for scatter plot vs line graphs.
+- [x] Option for coloring packet series.
+- [ ] Option for multiple Y series on the same graph.
 - [ ] Option for arbitrary function post processing.
 - [ ] Selector Menu for specifying a specific place to save output files.
 
+---
 ## Current Known Bugs
-- None at the moment.
+- Scatter plot graphs will have the label `Undefined Label` in the plot. This is
+  associated with L357 in graph.py. Currently considering removing this or
+  making labels hover-over or toggleable in the config file.
 
 ---
 ## Device Configuration File Formats
@@ -161,6 +174,7 @@ space and are typically faster to process, so you can send more of these at once
 
         "graph_definitions": {          // OPTIONAL
             "name": {
+                "use_scatter": bool,    // OPTIONAL
                 "x": {                  // OPTIONAL
                     "use_time": bool,   // OPTIONAL
                     "packet_id": str,   // OPTIONAL
@@ -169,6 +183,7 @@ space and are typically faster to process, so you can send more of these at once
                 "y": {                  // MANDATORY
                     "packet_id": str,   // MANDATORY
                     "y_axis": str,      // OPTIONAL
+                    "color": [int]      // OPTIONAL
                 },
             }, ...
         },
@@ -181,6 +196,12 @@ space and are typically faster to process, so you can send more of these at once
 ---
 
 ### Packet Graphs
+
+Packets can be visualized in graphs from the `packet_format:graph_definitions`
+dictionary. The key component of a graph definition is the declaration of a
+valid `packet_id` for the Y-axis.
+
+#### Labeling
 
 Packet graphs offer a real time display of the packets entering the system.
 These are defined in key-value pair `"graph_definitions"`, and are optional.
@@ -214,6 +235,15 @@ regardless of the actual ordering modes specified.
 
 By default, the title and axis labels display `undefined` unless specified.
 
+#### Series Coloring
+
+A parameter `y:color` is provided for coloring the specific series. The format
+is in `[R, G, B]` format. Behavior is not guaranteed if the list is not 3 values
+long and are all integers.
+
+A planned feature is the ability to visualize multiple Y series on the same
+graph. (See [Planned Features](#planned-features)).
+
 ---
 
 ### Filter Function
@@ -221,7 +251,7 @@ By default, the title and axis labels display `undefined` unless specified.
 A filter function can be defined by the user and inserted into the processing
 scheme. It must follow the given API: 
 
-TODO: this
+This is a planned feature. See [Planned Features](#planned-features).
 
 ---
 

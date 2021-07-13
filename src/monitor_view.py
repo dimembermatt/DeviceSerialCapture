@@ -155,18 +155,22 @@ class MonitorView(DisplayView):
             Parameters of the graph to define.
         """
         # Construct the graph.
+        print(graph_config)
+        import sys
+        # sys.exit(0)
         self.graphs[graph_config["title"]] = Graph(
-            title=graph_config["title"],
-            xAxisLabel=graph_config["x_axis"],
-            yAxisLabel=graph_config["y_axis"],
             series={
                 "packetData": {
                     "data": {"x": [], "y": []},
                     "multiplier": 1,
-                    "color": (255, 0, 0),
+                    "color": tuple(graph_config["color"]),
                 },
                 "list": ("packetData",),
             },
+            graphType=graph_config["graph_type"],
+            xAxisLabel=graph_config["x_axis"],
+            yAxisLabel=graph_config["y_axis"],
+            title=graph_config["title"],
         )
 
         # Add graph widget to the layout.
@@ -330,8 +334,15 @@ class MonitorView(DisplayView):
                     "x_series": None,
                     "y_axis": "Unconfigured",
                     "y_series": None,
-                    "capture_mode": "IDX"
+                    "capture_mode": "IDX",
+                    "graph_type": "Line",
+                    "color": (255, 255, 255)
                 }
+
+                # Plot Type.
+                if is_valid("use_scatter", graph_definition, bool):
+                    if graph_definition["use_scatter"] is True:
+                        graph_config["graph_type"] = "Scatter"
 
                 # X axis.
                 if is_valid("x", graph_definition, dict):
@@ -360,6 +371,9 @@ class MonitorView(DisplayView):
 
                     if is_valid("y_axis", y_config, str):
                         graph_config["y_axis"] = y_config["y_axis"]
+                    
+                    if is_valid("color", y_config, list):
+                        graph_config["color"] = y_config["color"]
 
                 self._add_graph(graph_config)
 
