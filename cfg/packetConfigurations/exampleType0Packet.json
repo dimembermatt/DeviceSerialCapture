@@ -23,9 +23,6 @@
             "output": {
                 "title": "Output data over time.",
                 "use_scatter": true,
-                "x": {
-                    "use_time": true
-                },
                 "y": {
                     "packet_id": "output",
                     "y_axis": "Temperature (C)",

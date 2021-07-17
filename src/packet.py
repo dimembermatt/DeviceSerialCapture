@@ -56,9 +56,7 @@ class Packet(ABC):
         - the bytes that were not consumed from the bytestream on packet
           generation.
         """
-        packet = Packet(
-            bytestream.decode("utf-8"), "None", time.time_ns(), 0
-        )
+        packet = Packet(bytestream.decode("utf-8"), "None", time.time_ns(), 0)
         return ([packet], b"")
 
     @classmethod
@@ -158,7 +156,9 @@ class T0_Packet(Packet):
     """
 
     @classmethod
-    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
+    def parse(
+        cls, bytestream: bytes, config: dict
+    ) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split the bytearray into packets using the packet_delimiter field
         #    in the config.
         (
@@ -253,7 +253,9 @@ class T1_Packet(Packet):
     """
 
     @classmethod
-    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
+    def parse(
+        cls, bytestream: bytes, config: dict
+    ) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split the bytearray into packets using the packet_delimiter field
         #    in the config.
         (
@@ -439,7 +441,9 @@ class T2_Packet(Packet):
     """
 
     @classmethod
-    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
+    def parse(
+        cls, bytestream: bytes, config: dict
+    ) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split packets by header_len.
         (
             packets,
@@ -537,10 +541,15 @@ class T2_Packet(Packet):
 
 
 class T3_Packet(Packet):
-    """packet_series: Int, packet_id: Time, packet_data: Int"""
+    """
+    Input: bit string representing hex values.
+    Output: packet_series: Int, packet_id: Time, packet_data: Int
+    """
 
     @classmethod
-    def parse(cls, bytestream: bytes, config: dict) -> Tuple[Union[List[T], str], bytes]:
+    def parse(
+        cls, bytestream: bytes, config: dict
+    ) -> Tuple[Union[List[T], str], bytes]:
         # 1. Split packets by header_len.
         def round_bits(x):
             return (int)(((x + 7) & -8) / 8)
@@ -686,6 +695,12 @@ class PacketManager:
         """Returns a list of packet series."""
         return list(self._packets.keys())
 
+    def get_series_packet_count(self, series: int) -> int:
+        return len(self._packets.get(series, []))
+        
+    def get_packet_count(self) -> int:
+        return sum(len(keys) for keys in self._packets.items())
+
     def save_all(self) -> None:
         """
         Saves all packet series in the packet manager into individual CSVs. The
@@ -738,6 +753,9 @@ class PacketParser:
     def set_config(self, config: dict) -> None:
         """Updates the parser configurations."""
         self._config = config
+
+    def get_config(self) -> dict:
+        return self._config
 
     def clear_bytestream(self, bytestream: bytes) -> None:
         """Clears the internal bytestream from being processed."""

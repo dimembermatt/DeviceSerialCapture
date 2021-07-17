@@ -5,18 +5,25 @@
     "packet_format": {
         "type": 1,
         "packet_delimiters": [";"],
-        "packet_ids": ["0x632"],
+        "packet_ids": ["0x632", "0x633"],
         "data_delimiters": [":"],
         "specifiers": ["id", "data"],
         "graph_definitions": {
             "0x632": {
-                "title": "Temperature data over time.",
+                "title": "Temperature data over sample index.",
                 "x": {
-                    "use_time": true,
-                    "x_axis": "Time (ms)"
+                    "use_time": false,
+                    "x_axis": "Sample"
                 },
                 "y": {
                     "packet_id": "0x632",
+                    "y_axis": "Temperature (C)"
+                }
+            },
+            "0x633": {
+                "title": "Temperature data over time.",
+                "y": {
+                    "packet_id": "0x633",
                     "y_axis": "Temperature (C)"
                 }
             }

@@ -235,6 +235,9 @@ class Graph(View):
             )
             self.plt.addItem(self._graph[series])
 
+    def getSeries(self):
+        return self._series["list"][:]
+
     def setPoint(self, series, idx, datapointX, datapointY):
         """
         Sets a new data point to the graph. Specifically for graphs like MPPT

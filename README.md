@@ -76,6 +76,10 @@ The current version of this program is V0.2.0 (beta).
 - [ ] Option for arbitrary function post processing.
 - [ ] Selector Menu for specifying a specific place to save output files.
 
+TODO:
+1. set packet_id based on mode
+2. re-evaluate ABI of packet series, id: should they all be str? int? how to parse?
+
 ---
 ## Current Known Bugs
 - Scatter plot graphs will have the label `Undefined Label` in the plot. This is

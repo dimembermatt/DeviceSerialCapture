@@ -89,11 +89,17 @@ class MonitorView(DisplayView):
         # Capture read data from serial_datastream, if available.
         # bytes_to_parse = b""
         i = random.randint(0, 10)
-        bytes_to_parse = b'sensor = ' + f'{i}'.encode('utf-8') + b'\toutput = ' + f'{i*2}'.encode('utf-8') + b'\n'
+        bytes_to_parse = (
+            b"id:0x632;data:"
+            + f"{i}".encode("utf-8")
+            + b";id:0x633;data:"
+            + f"{i*2}".encode("utf-8")
+            + b";"
+        )
         while not self._serial_datastream["read_lock"].tryLock(50):
             pass
         # for byte in self._serial_datastream["read"]:
-            # bytes_to_parse += bytearray(byte)
+        # bytes_to_parse += bytearray(byte)
         self._serial_datastream["read"].clear()
         self._serial_datastream["read_lock"].unlock()
 
@@ -102,13 +108,18 @@ class MonitorView(DisplayView):
             print("\nParsing: ", bytes_to_parse)
             self._packet_parser.append_bytestream(bytes_to_parse)
             packets = self._packet_parser.process_packets()
-
-            # Update the active graphs and the text edit based on packets in
-            # the packet_man.
+            print("Packets received:", packets)
             for packet in packets:
+                config = self._packet_parser.get_config()
+                print("Config:", config)
+                if config:
+                    # Filter packets.
+                    packet = self._filter_packet(packet, config)
+                    # Adjust packet_id.
+                    packet = self._adjust_packet_id(packet, config)
+                # Update packet manager.
                 self._packet_man.insert_packet(packet)
                 # Update active graphs.
-                print("Apply data to graph.")
                 self._apply_data_to_graph(packet)
 
                 # Update the text edit.
@@ -141,8 +152,29 @@ class MonitorView(DisplayView):
         if errors:
             # Raise the first error.
             self.raise_error(errors[0])
-        
+
         sleep(0.3)
+
+    def _filter_packet(self, packet: Packet, config: dict) -> Packet:
+        return packet
+
+    def _adjust_packet_id(self, packet: Packet, config: dict) -> Packet:
+        graph_definitions = config["packet_format"]["graph_definitions"]
+        graph_definition = graph_definitions.get(packet.packet_series)
+
+        # Only look at Y series.
+        if graph_definition and graph_definition["y_series"] == packet.packet_series:
+            capture_mode = graph_definition.get("capture_mode")
+            if capture_mode:
+                if capture_mode == "TIME":
+                    pass
+                elif capture_mode == "IDX":
+                    packet.packet_id = self._packet_man.get_series_packet_count(packet.packet_series)
+                elif capture_mode == "INLINE":
+                    x_series = graph_definition.get("x_series")
+                    packet.packet_id = next(reversed(self._packet_man.get_series(x_series).values()))
+
+        return packet
 
     # Graph management.
     def _add_graph(self, graph_config: dict) -> None:
@@ -154,11 +186,11 @@ class MonitorView(DisplayView):
         graph_config: Dict
             Parameters of the graph to define.
         """
-        # Construct the graph.
-        print(graph_config)
-        import sys
-        # sys.exit(0)
-        self.graphs[graph_config["title"]] = Graph(
+
+        # Graphs are keyed by the key: this key should be unique within the
+        # configuration json. Each graph is paired with at least one Y series;
+        # packets with a matching Y series are identified by graph_config["series"].
+        self.graphs[graph_config["key"]] = [Graph(
             series={
                 "packetData": {
                     "data": {"x": [], "y": []},
@@ -171,10 +203,10 @@ class MonitorView(DisplayView):
             xAxisLabel=graph_config["x_axis"],
             yAxisLabel=graph_config["y_axis"],
             title=graph_config["title"],
-        )
+        ), graph_config["y_series"]]
 
         # Add graph widget to the layout.
-        widget = self.graphs[graph_config["title"]].get_layout()
+        widget = self.graphs[graph_config["key"]].get_layout()
         self._widget_pointers["tab_packet_visualizer"].addTab(
             widget, graph_config["title"]
         )
@@ -196,14 +228,17 @@ class MonitorView(DisplayView):
             Adds a packet to an active graph.
         """
         try:
-            print("PACKET",packet)
-            print("SERIES",packet.packet_series)
-            print("ID",packet.packet_id)
-            print("DATA",packet.packet_value)
-            if packet.packet_series in self.graphs:
-                self.graphs[packet.packet_series].addPoint(
-                    "packetData", packet.packet_id, float(packet.packet_value)
-                )
+            print("PACKET", packet)
+            print("SERIES", packet.packet_series)
+            print("ID", packet.packet_id)
+            print("DATA", packet.packet_value)
+            print("GRAPHS", self.graphs)
+            for graph in self.graphs.values():
+                print("Graph series:", graph[1])
+                if packet.packet_series in int(graph[1]):
+                    graph.addPoint(
+                        "packetData", packet.packet_id, float(packet.packet_value)
+                    )
         except:
             pass
 
@@ -241,23 +276,28 @@ class MonitorView(DisplayView):
         config : Dict
             Configuration generated from the json file.
         """
+
+        def is_valid(key: str, loc: dict, val_type) -> bool:
+            return key in loc and type(loc[key]) is val_type
+
         # Check for mandatory packet_title.
-        if "packet_title" not in config or type(config["packet_title"]) is not str:
+        if not is_valid("packet_title", config, str):
             self.raise_error("Invalid config packet title.")
             return
 
         # Check for mandatory packet_format.
-        if "packet_format" not in config or type(config["packet_format"]) is not dict:
+        if not is_valid("packet_format", config, dict):
             self.raise_error("Invalid packet format.")
             return
 
         # Check fields in packet_format.
         subconfig = config["packet_format"]
-        if (
-            "type" not in subconfig
-            or type(subconfig["type"]) is not int
-            or subconfig["type"] not in [0, 1, 2, 3]
-        ):
+        if not is_valid("type", subconfig, int) or subconfig["type"] not in [
+            0,
+            1,
+            2,
+            3,
+        ]:
             self.raise_error("Invalid packet type.")
             return
 
@@ -315,13 +355,7 @@ class MonitorView(DisplayView):
             ):
                 return
 
-        if (
-            "graph_definitions" in subconfig
-            and type(subconfig["graph_definitions"]) is dict
-        ):
-            def is_valid(key: str, loc: dict, val_type) -> bool:
-                return (key in loc and type(loc[key]) is val_type)
-
+        if is_valid("graph_definitions", subconfig, dict):
             # Clear prior graphs from the monitor view.
             self._widget_pointers["tab_packet_visualizer"].clear()
 
@@ -329,6 +363,7 @@ class MonitorView(DisplayView):
             for entry in subconfig["graph_definitions"]:
                 graph_definition = subconfig["graph_definitions"][entry]
                 graph_config = {
+                    "key": entry,
                     "title": entry,
                     "x_axis": "Packet Idx",
                     "x_series": None,
@@ -336,8 +371,12 @@ class MonitorView(DisplayView):
                     "y_series": None,
                     "capture_mode": "IDX",
                     "graph_type": "Line",
-                    "color": (255, 255, 255)
+                    "color": (255, 255, 255),
                 }
+
+                # Plot Title.
+                if is_valid("title", graph_definition, str):
+                    graph_config["title"] = graph_definition["title"]
 
                 # Plot Type.
                 if is_valid("use_scatter", graph_definition, bool):
@@ -371,11 +410,12 @@ class MonitorView(DisplayView):
 
                     if is_valid("y_axis", y_config, str):
                         graph_config["y_axis"] = y_config["y_axis"]
-                    
+
                     if is_valid("color", y_config, list):
                         graph_config["color"] = y_config["color"]
 
                 self._add_graph(graph_config)
+                subconfig["graph_definitions"][entry] = graph_config
 
         # Passing all mandatory checks, update the packet_config dict with the
         # newest config.
