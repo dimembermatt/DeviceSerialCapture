@@ -90,9 +90,15 @@ class MonitorView(DisplayView):
         # bytes_to_parse = b""
         i = random.randint(0, 10)
         bytes_to_parse = (
-            b"id:0x632;data:"
+            b"i:0x643;d:"
             + f"{i}".encode("utf-8")
-            + b";id:0x633;data:"
+            + b";i:0x644;d:"
+            + f"{i*3}".encode("utf-8")
+            + b";i:0x620;d:"
+            + f"{i}".encode("utf-8")
+            + b";i:0x630;d:"
+            + f"{i*5}".encode("utf-8")
+            + b";i:0x631;d:"
             + f"{i*2}".encode("utf-8")
             + b";"
         )
@@ -105,13 +111,13 @@ class MonitorView(DisplayView):
 
         if len(bytes_to_parse) > 0:
             # Parse any packets if we can.
-            print("\nParsing: ", bytes_to_parse)
+            # print("\nParsing: ", bytes_to_parse)
             self._packet_parser.append_bytestream(bytes_to_parse)
             packets = self._packet_parser.process_packets()
-            print("Packets received:", packets)
+            # print("Packets received:", packets)
             for packet in packets:
                 config = self._packet_parser.get_config()
-                print("Config:", config)
+                # print("Config:", config)
                 if config:
                     # Filter packets.
                     packet = self._filter_packet(packet, config)
@@ -190,7 +196,7 @@ class MonitorView(DisplayView):
         # Graphs are keyed by the key: this key should be unique within the
         # configuration json. Each graph is paired with at least one Y series;
         # packets with a matching Y series are identified by graph_config["series"].
-        self.graphs[graph_config["key"]] = [Graph(
+        self.graphs[graph_config["key"]] = Graph(
             series={
                 "packetData": {
                     "data": {"x": [], "y": []},
@@ -203,7 +209,7 @@ class MonitorView(DisplayView):
             xAxisLabel=graph_config["x_axis"],
             yAxisLabel=graph_config["y_axis"],
             title=graph_config["title"],
-        ), graph_config["y_series"]]
+        )
 
         # Add graph widget to the layout.
         widget = self.graphs[graph_config["key"]].get_layout()
@@ -227,20 +233,11 @@ class MonitorView(DisplayView):
         packet : Packet
             Adds a packet to an active graph.
         """
-        try:
-            print("PACKET", packet)
-            print("SERIES", packet.packet_series)
-            print("ID", packet.packet_id)
-            print("DATA", packet.packet_value)
-            print("GRAPHS", self.graphs)
-            for graph in self.graphs.values():
-                print("Graph series:", graph[1])
-                if packet.packet_series in int(graph[1]):
-                    graph.addPoint(
-                        "packetData", packet.packet_id, float(packet.packet_value)
-                    )
-        except:
-            pass
+        graph = self.graphs.get(packet.packet_series)
+        if graph:
+            graph.addPoint(
+                "packetData", packet.packet_id, float(packet.packet_value)
+            )
 
     # Packet management.
     def _get_file_name(self):
@@ -423,7 +420,6 @@ class MonitorView(DisplayView):
 
         # Then update the packet manager.
         self._packet_parser.set_config(config)
-        print("Set config:", config)
 
     def _valid_packet_config_helper(self, config, type, key, error=None):
         """
