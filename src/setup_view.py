@@ -10,7 +10,7 @@ Description: Implements the SetupView class, which inherits DisplayView class.
 """
 # Library Imports.
 import json
-from PyQt5.QtCore import Qt, QDir
+from PyQt5.QtCore import Qt, QDir, QTimer
 from PyQt5.QtWidgets import QFileDialog
 
 # Custom Imports.
@@ -25,7 +25,7 @@ class SetupView(DisplayView):
     """
 
     # Pre-filled dropdown options.
-    BAUD_RATE = [115200, 1200, 2400, 4800, 19200, 38400, 57600]
+    BAUD_RATE = [115200, 1200, 2400, 4800, 9600, 19200, 38400, 57600]
     DATA_BITS = ["EIGHT", "FIVE", "SIX", "SEVEN"]
     ENDIAN = ["LSB", "MSB"]
     SYNC_BITS = ["ONE", "TWO"]
@@ -75,6 +75,9 @@ class SetupView(DisplayView):
         )
 
         self.init_frame(self._update_console)
+        self._reset_com_timer = QTimer()
+        self._reset_com_timer.timeout.connect(self._update_ports)
+        self._reset_com_timer.start(10000) # 10 s
 
     def _update_console(self):
         self._update_ports()

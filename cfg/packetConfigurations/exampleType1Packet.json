@@ -7,6 +7,7 @@
         "packet_delimiters": [";"],
         "packet_ids": ["0x632", "0x633"],
         "data_delimiters": [":"],
+        "data_base": "hex",
         "specifiers": ["id", "data"],
         "graph_definitions": {
             "0x632": {

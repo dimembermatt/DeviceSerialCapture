@@ -27,6 +27,7 @@ class Packet(ABC):
     packet_series: str = ""
     packet_id: Any = ""
     packet_value: Any = ""
+    packet_type: int = -1
 
     @classmethod
     def parse(
@@ -56,7 +57,7 @@ class Packet(ABC):
         - the bytes that were not consumed from the bytestream on packet
           generation.
         """
-        packet = Packet(bytestream.decode("utf-8"), "None", time.time_ns(), 0)
+        packet = Packet(bytestream.decode("ascii", errors="ignore"), "None", time.time_ns(), 0)
         return ([packet], b"")
 
     @classmethod
@@ -148,11 +149,20 @@ class Packet(ABC):
         consumed = len(bytestream) - remainder
         return (packets, bytestream[:consumed], bytestream[consumed:])
 
+    @classmethod
+    def _set_data_type(cls, packets: List[str], data_type:str) -> List[Any]:
+        # By now the packets should be in the format: [[ID, DATA]].
+        if data_type == "hex":
+            return [[packet[0], int(packet[1], 16)] for packet in packets]
+        elif data_type == "dec":
+            return [[packet[0], int(packet[1], 10)] for packet in packets]
+        else:
+            return packets
 
 class T0_Packet(Packet):
     """
     Innput: byte string representing ASCII, hex, decimal, or boolean values.
-    Output: packet_series: Str, packet_id: Time, packet_data: Str
+    Output: packet_series: Str, packet_id: Time, packet_data: Str/Hex/Int
     """
 
     @classmethod
@@ -182,16 +192,22 @@ class T0_Packet(Packet):
 
         # 4. Throw out packets not explicitly defined in "packet_ids".
         packets = cls._retain_valid_packets(packets, config["packet_ids"])
-        # By now the packets should be in the format: [[ID, DATA]].
+        # By now the packets should be in the format: [[ID, DATA:str]].
 
-        # 5. Generate packets from strings.
+        # 5. Convert DATA component based on `data_base`.
+        packets = Packet._set_data_type(packets, config["data_base"])
+        # By now the packets should be in the format: [[ID, DATA:str/int
+        # base16/int base10]].
+
+        # 6. Generate packets from strings.
         #    The packet_id is adjusted later based on graph_definitions.
         packets = [
             Packet(
-                plaintext=packet[0] + ": " + packet[1],
+                plaintext=packet[0] + ": " + str(packet[1]),
                 packet_series=packet[0],
                 packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
+                packet_type=0
             )
             for idx, packet in enumerate(packets)
         ]
@@ -245,7 +261,6 @@ class T0_Packet(Packet):
         """
         return [packet for packet in packets if packet[0] in ids]
 
-
 class T1_Packet(Packet):
     """
     Innput: byte string representing ASCII, hex, decimal, or boolean values.
@@ -289,14 +304,20 @@ class T1_Packet(Packet):
         )
         # By now the packets should be in the format: [[ID, VALUE]].
 
-        # 5. Generate packets from strings.
+        # 5. Convert DATA component based on `data_base`.
+        packets = Packet._set_data_type(packets, config["data_base"])
+        # By now the packets should be in the format: [[ID, VALUE:str/int
+        # base16/int base10]].
+
+        # 6. Generate packets from strings.
         #    The packet_id is adjusted later based on graph_definitions.
         packets = [
             Packet(
-                plaintext=packet[0] + ": " + packet[1],
+                plaintext=packet[0] + ": " + str(packet[1]),
                 packet_series=packet[0],
                 packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
+                packet_type=1
             )
             for idx, packet in enumerate(packets)
         ]
@@ -463,7 +484,7 @@ class T2_Packet(Packet):
         # 3. Throw out packets not explicitly defined in "packet_ids" and
         #    invalid data packets.
         packets = cls._retain_valid_packets(packets, config["packet_ids"])
-        # By now the packets should be in the format: [[ID(Int), DATA(Int)]].
+        # By now the packets should be in the format: [[ID(Str), DATA(Int)]].
 
         # 4. Generate packets from strings.
         #    The packet_id is adjusted later based on graph_definition.
@@ -473,6 +494,7 @@ class T2_Packet(Packet):
                 packet_series=packet[0],
                 packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
+                packet_type=2
             )
             for idx, packet in enumerate(packets)
         ]
@@ -517,7 +539,7 @@ class T2_Packet(Packet):
     @classmethod
     def _retain_valid_packets(
         cls, packets: List[List[int]], packet_ids: List[str]
-    ) -> List[List[int]]:
+    ) -> List[List[Any]]:
         """
         Retains and agglomerates valid packets.
 
@@ -530,11 +552,11 @@ class T2_Packet(Packet):
 
         Returns
         -------
-        [[int]]
+        [[str, int]]
             A list of lists representing the packet id and data.
         """
         return [
-            [packet[0], packet[1]]
+            [hex(packet[0]), packet[1]]
             for packet in packets
             if any(packet[0] == int(packet_id, base=16) for packet_id in packet_ids)
         ]
@@ -572,7 +594,7 @@ class T3_Packet(Packet):
         # 3. Throw out packets not explicitly defined in "packet_ids" and
         #    invalid data packets.
         packets = cls._retain_valid_packets(packets, config["packet_ids"])
-        # By now the packets should be in the format: [[ID(Int), DATA(Int)]].
+        # By now the packets should be in the format: [[ID(str), DATA(Int)]].
 
         # 4. Generate packets from strings.
         #    The packet_id is adjusted later based on graph_definition.
@@ -582,6 +604,7 @@ class T3_Packet(Packet):
                 packet_series=packet[0],
                 packet_id=time.time_ns() + idx,
                 packet_value=packet[1],
+                packet_type=3
             )
             for idx, packet in enumerate(packets)
         ]
@@ -635,7 +658,7 @@ class T3_Packet(Packet):
     @classmethod
     def _retain_valid_packets(
         cls, packets: List[List[int]], packet_ids: List[str]
-    ) -> List[List[int]]:
+    ) -> List[List[Any]]:
         """
         Retains and agglomerates valid packets.
 
@@ -648,13 +671,16 @@ class T3_Packet(Packet):
 
         Returns
         -------
-        [[str], ...]
+        [[str, int], ...]
             A list of agglomerated packets.
         """
+        base = 2
+        if "0x" in packet_ids[0]:
+            base = 16
         return [
-            [packet[0], packet[1]]
+            [hex(packet[0]), packet[1]]
             for packet in packets
-            if any(packet[0] == int(packet_id, base=2) for packet_id in packet_ids)
+            if any(packet[0] == int(packet_id, base=base) for packet_id in packet_ids)
         ]
 
 

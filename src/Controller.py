@@ -223,7 +223,7 @@ class Controller:
                     while not _read_lock.tryLock(50):
                         pass
                     if response != b"":
-                        print("Read({}): {}".format(id, response.decode("utf-8")))
+                        # print("Read({}): {}".format(id, response.decode("utf-8")))
                         _read_buffer.append(response)
                     _read_lock.unlock()
 
@@ -236,7 +236,7 @@ class Controller:
                         print("Write({}): {}".format(id, str(write_set)))
                         try:
                             for entry in write_set:
-                                print(entry)
+                                # print(entry)
                                 self._serial_connection.write(entry)
                         except Exception as e:
                             self._update_status("Serial Write: " + str(e))

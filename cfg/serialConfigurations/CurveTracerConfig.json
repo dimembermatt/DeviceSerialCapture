@@ -1,0 +1,8 @@
+{
+    "name": "Serial configuration for the CurveTracer board for LHRs.",
+    "baud_rate": 115200,
+    "data_bits": "EIGHT",
+    "endian": "LSB",
+    "sync_bits": "ONE",
+    "parity_bits": "None"
+}

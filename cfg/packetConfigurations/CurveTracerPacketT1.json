@@ -1,0 +1,60 @@
+{
+    "packet_title": "Curve Tracer packet.",
+    "packet_description": "Type 1 Curve Tracer packets revolving around CAN IDs.",
+    "example_line": "i:0x601;d:0x440;",
+    "packet_format": {
+        "type": 1,
+        "packet_delimiters": [";"],
+        "packet_ids": ["0x643", "0x644", "0x620", "0x630", "0x631", "0x100", "0x101", "0x102", "0x103", "0x104", "0x105", "0x645"],
+        "data_delimiters": [":"],
+        "data_base": "hex",
+        "specifiers": ["i", "d"],
+        "graph_definitions": {
+            "0x643": {
+                "title": "Voltage over idx.",
+                "x": {
+                    "use_time": false
+                },
+                "y": {
+                    "packet_id": "0x643",
+                    "y_axis": "Voltage (V*1000)",
+                    "color": [255, 165, 0]
+                }
+            },
+            "0x644": {
+                "title": "Current over idx.",
+                "x": {
+                    "use_time": false
+                },
+                "y": {
+                    "packet_id": "0x644",
+                    "y_axis": "Current (V*1000)",
+                    "color": [173, 216, 230]
+                }
+            },
+            "0x620": {
+                "title": "Temperature over time.",
+                "x": {
+                    "use_time": true
+                },
+                "y": {
+                    "packet_id": "0x620",
+                    "y_axis": "Temperature (C*1000)",
+                    "color": [255, 0, 0]
+                }
+            },
+            "0x630": {
+                "title": "Irradiance over time.",
+                "x": {
+                    "use_time": true
+                },
+                "y": {
+                    "packet_id": "0x630",
+                    "y_axis": "Irradiance (W/m^2*1000)",
+                    "color": [255, 255, 0]
+                }
+            }
+        }
+    }
+}
+

@@ -87,34 +87,19 @@ class MonitorView(DisplayView):
         Performs any required actions at FPS.
         """
         # Capture read data from serial_datastream, if available.
-        # bytes_to_parse = b""
-        i = random.randint(0, 10)
-        bytes_to_parse = (
-            b"i:0x643;d:"
-            + f"{i}".encode("utf-8")
-            + b";i:0x644;d:"
-            + f"{i*3}".encode("utf-8")
-            + b";i:0x620;d:"
-            + f"{i}".encode("utf-8")
-            + b";i:0x630;d:"
-            + f"{i*5}".encode("utf-8")
-            + b";i:0x631;d:"
-            + f"{i*2}".encode("utf-8")
-            + b";"
-        )
+        bytes_to_parse = b""
+        # bytes_to_parse = int("0x64_30_00_01_64_40_00_02_64_40_50_02_64_40_00_32", 16).to_bytes(16, 'big')
         while not self._serial_datastream["read_lock"].tryLock(50):
             pass
-        # for byte in self._serial_datastream["read"]:
-        # bytes_to_parse += bytearray(byte)
+        for byte in self._serial_datastream["read"]:
+            bytes_to_parse += bytearray(byte)
         self._serial_datastream["read"].clear()
         self._serial_datastream["read_lock"].unlock()
 
         if len(bytes_to_parse) > 0:
             # Parse any packets if we can.
-            # print("\nParsing: ", bytes_to_parse)
             self._packet_parser.append_bytestream(bytes_to_parse)
             packets = self._packet_parser.process_packets()
-            # print("Packets received:", packets)
             for packet in packets:
                 config = self._packet_parser.get_config()
                 # print("Config:", config)
@@ -236,7 +221,7 @@ class MonitorView(DisplayView):
         graph = self.graphs.get(packet.packet_series)
         if graph:
             graph.addPoint(
-                "packetData", packet.packet_id, float(packet.packet_value)
+                "packetData", packet.packet_id, packet.packet_value
             )
 
     # Packet management.
@@ -316,6 +301,10 @@ class MonitorView(DisplayView):
             if not self._valid_packet_config_helper(subconfig, str, "ignore", "ignore"):
                 subconfig["ignore"] = []
 
+            if not is_valid("data_base", subconfig, str) or subconfig["data_base"] not in ["str", "hex", "dec"]:
+                self.raise_error("Invalid data_base type.")
+                return
+
         elif subconfig["type"] == 1:
             # Check for mandatory packet_delimiters, packet_ids, and specifiers.
             if (
@@ -336,6 +325,10 @@ class MonitorView(DisplayView):
                 subconfig, str, "data_delimiters", "data_delimiters"
             ):
                 subconfig["data_delimiters"] = []
+
+            if not is_valid("data_base", subconfig, str) or subconfig["data_base"] not in ["str", "hex", "dec"]:
+                self.raise_error("Invalid data_base type.")
+                return
 
         elif subconfig["type"] == 2 or subconfig["type"] == 3:
             # Check for mandatory header_order, header_len, and packet_ids.
@@ -370,6 +363,11 @@ class MonitorView(DisplayView):
                     "graph_type": "Line",
                     "color": (255, 255, 255),
                 }
+
+                # Throw error upon str data type graphs.
+                if subconfig["type"] in [0, 1] and subconfig["data_base"] == "str":
+                    self.raise_error("String data type used for graph.")
+                    return
 
                 # Plot Title.
                 if is_valid("title", graph_definition, str):
@@ -462,7 +460,7 @@ class MonitorView(DisplayView):
             # Lock the write FIFO and append to queue, then unlock.
             while not self._serial_datastream["write_lock"].tryLock(200):
                 pass
-            self._serial_datastream["write"].append(text.encode("utf-8"))
+            self._serial_datastream["write"].append(text.encode('ascii', 'ignore'))
             self._serial_datastream["write_lock"].unlock()
 
             # Echo to the text edit.

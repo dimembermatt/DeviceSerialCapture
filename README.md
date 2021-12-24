@@ -33,6 +33,7 @@ applications, namely:
       - [Labeling](#labeling)
       - [Series Coloring](#series-coloring)
     - [Filter Function](#filter-function)
+    - [Data Base](#data-base)
     - [Type 0: "Human Readable Format"](#type-0-human-readable-format)
       - [Example](#example)
     - [Type 1: "Compressed CSV Format"](#type-1-compressed-csv-format)
@@ -162,6 +163,7 @@ space and are typically faster to process, so you can send more of these at once
         // type 0
         "packet_delimiters": [str],     // MANDATORY
         "packet_ids": [str],            // MANDATORY
+        "data_base": str,               // MANDATORY
         "data_delimiters": [str],       // OPTIONAL
         "ignore": [str],                // OPTIONAL
         
@@ -169,6 +171,7 @@ space and are typically faster to process, so you can send more of these at once
         "packet_delimiters": [str],     // MANDATORY
         "packet_ids": [str],            // MANDATORY
         "specifiers": [str],            // MANDATORY
+        "data_base": str,               // MANDATORY
         "data_delimiters": [str],       // OPTIONAL
 
         // type 2, 3
@@ -196,8 +199,6 @@ space and are typically faster to process, so you can send more of these at once
     }
 }
 ```
-
----
 
 ### Packet Graphs
 
@@ -257,7 +258,15 @@ scheme. It must follow the given API:
 
 This is a planned feature. See [Planned Features](#planned-features).
 
----
+### Data Base
+
+Type 0 and Type 1 packet IDs are associated with a piece of data, sent as bytes.
+Data can be represented in one of three formats: `"str", "hex", or "dec"`. This
+must be specified. If the packet ID's data is a Str value, it cannot be
+contained within a graph definition. This is specified in field `data_base`.
+
+Hex values are prepended with the `0x` chars; int values have
+no prepend. 
 
 ### Type 0: "Human Readable Format"
 
@@ -269,6 +278,7 @@ doesn't work very well at high frequencies (i.e. using Serial.print() every ms).
   from each other. These are typically whitespace characters.
 - `packet_ids`: Packet IDs identify all packets that should be captured; packets
   not matching this list are scrubbed.
+- `data_base`: The data is cast from char array to the base specified.
 - `data_delimiters`: All strings in this list are used to split the packet into
   two halves: the ID and data. They are scrubbed during parsing.
 - `ignore`: Any strings encountered in this list are removed from the data
@@ -299,6 +309,7 @@ speed. Our configuration format will be as follows:
         "type": 0,
         "packet_delimiters": ["\n"],
         "packet_ids": ["motor speed"],
+        "data_base": "dec",
         "data_delimiters": [": "],
         "ignore": [" rpm"],
         "graph_definitions": {
@@ -321,7 +332,8 @@ This packet format splits packets by the newline, `\n`, and splits each packet
 into an ID component and DATA component to the left and right of the
 data_delimiters, `" : "`, respectively. We discard all packets with an ID
 component that is not `motor speed`, and finally we scrub `" rpm"` from all DATA
-components remaining.
+components remaining. Since the data base is dec, for decimal, all DATA
+components are converted from str to base 10 integers.
 
 ---
 
@@ -350,6 +362,7 @@ identifies the packet is specifying an ID or DATA.
     - Other specifiers are currently not supported for now. Perhaps more than
       one DATA field can be supported. Alternatively, you can just specify
       multiple packet_ids for the same source, i.e. RTD_TEMP, RTD_MOD_TEMP.
+- `data_base`: The data is cast from char array to the base specified.
 - `data_delimiters`: All strings in this list are used to split the packet into
   its specifiers. They are scrubbed during parsing.
 
@@ -371,12 +384,13 @@ would be as follows:
 ```json
 {
     "packet_title": "Temperature data packet.",
-    "example_line": "id:temp;data:128;id:light;data:8000;",
+    "example_line": "id:temp;data:0x128;id:light;data:0x8000;",
     "packet_format": {
         "type": 1,
         "packet_delimiters": [";"],
         "packet_ids": ["temp"],
         "specifiers": ["id", "data"],
+        "data_base": "hex",
         "data_delimiters": [":"],
         "graph_definitions": {
             "temp": {
@@ -403,7 +417,8 @@ an ID component `data` has a DATA component specifying the source data. We
 assume that any packet with an ID component `data` must follow a packet with an
 ID component `id`. If not, the current packet and any other packets before it
 waiting for a completion are thrown out. Finally, only packets with `temp` are
-accepted.
+accepted. Since the data base is hex, for hexadecimal, all DATA components are
+converted from str to base 16 integers. 
 
 ---
 

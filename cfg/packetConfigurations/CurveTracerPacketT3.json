@@ -1,18 +1,17 @@
 {
     "packet_title": "Curve Tracer packet.",
-    "packet_description": "Result and Exception Packets.",
-    "example_line": "i:0x601;d:440;",
+    "packet_description": "Type 3 Curve Tracer packets revolving around CAN IDs.",
+    "example_line": "0x643_00001_644_00001",
     "packet_format": {
-        "type": 1,
-        "packet_delimiters": [";"],
-        "packet_ids": ["0x643", "0x644", "0x620", "0x630", "0x631"],
-        "data_delimiters": [":"],
-        "specifiers": ["i", "d"],
+        "type": 3,
+        "header_order": ["ID", "DATA"],
+        "header_len": [12, 20],
+        "packet_ids": ["0x643", "0x644", "0x620", "0x630", "0x631", "0x100", "0x101", "0x102", "0x103", "0x104", "0x105"],
         "graph_definitions": {
             "0x643": {
                 "title": "Voltage over time.",
                 "x": {
-                    "use_time": true
+                    "use_time": false
                 },
                 "y": {
                     "packet_id": "0x643",
@@ -23,7 +22,7 @@
             "0x644": {
                 "title": "Current over time.",
                 "x": {
-                    "use_time": true
+                    "use_time": false
                 },
                 "y": {
                     "packet_id": "0x644",
@@ -34,7 +33,7 @@
             "0x620": {
                 "title": "Temperature over time.",
                 "x": {
-                    "use_time": true
+                    "use_time": false
                 },
                 "y": {
                     "packet_id": "0x620",
@@ -45,7 +44,7 @@
             "0x630": {
                 "title": "Irradiance over time.",
                 "x": {
-                    "use_time": true
+                    "use_time": false
                 },
                 "y": {
                     "packet_id": "0x630",
@@ -56,4 +55,3 @@
         }
     }
 }
-
